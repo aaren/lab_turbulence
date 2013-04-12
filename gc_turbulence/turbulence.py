@@ -37,7 +37,7 @@ class SingleLayer2dFrame(object):
     """Each SingleLayer2dRun is comprised of a series of frames.
     This class represents one of the frames.
     """
-    def __init__(self, fname, quiver_format):
+    def __init__(self, fname, quiver_format='quiver/quiver_{f}.png'):
         """Initialise a frame object.
 
         Inputs: fname - filename of a piv velocity text file
@@ -47,23 +47,41 @@ class SingleLayer2dFrame(object):
         self.quiver_format = quiver_format
 
     @lazyprop
+    def header(self):
+        """Pull header from velocity file and return as dictionary."""
+        with open(self.fname) as f:
+            content = f.read().splitlines()
+            head = content[1:7]
+            header_info = {}
+            for h in head:
+                k = h.split(':')[0]
+                v = ':'.join(h.split(':')[1:])
+                header_info[k] = v
+        return header_info
+
+    @lazyprop
     def shape(self):
         """Get the gridsize from a piv text file by filtering
         the metadata in the header.
         """
-        with open(self.fname) as f:
-            content = [l.strip('\r\n') for l in f.readlines()]
-            gridsize = content[3].split(':')[1]
-            x = gridsize.split(', ')[0][-2:]
-            y = gridsize.split(', ')[1][-3:-1]
-            shape = (int(y), int(x))
+        gridsize = self.header['GridSize']
+        x = gridsize.split(', ')[0][-2:]
+        y = gridsize.split(', ')[1][-3:-1]
+        shape = (int(y), int(x))
         return shape
 
     @lazyprop
-    def data(self):
+    def data(self, delimiter=None):
         """Extract data from a PIV velocity text file."""
+        if not delimiter:
+            # force determine delimiter
+            if self.header['FileID'] == 'DSExport.CSV':
+                delimiter = ','
+            elif self.header['FileID'] == 'DSExport.TAB':
+                delimiter = None
         # extract data
-        D = np.genfromtxt(self.fname, skip_header=9)
+        # TODO: dtypes
+        D = np.genfromtxt(self.fname, skip_header=9, delimiter=delimiter)
         shape = self.shape
 
         # reshape to sensible

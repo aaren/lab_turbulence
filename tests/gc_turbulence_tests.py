@@ -1,5 +1,5 @@
 from nose.tools import *
-import NAME
+import gc_turbulence
 
 def setup():
     print "SETUP!"
