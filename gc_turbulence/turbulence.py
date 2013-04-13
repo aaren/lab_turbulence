@@ -6,6 +6,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from scipy import stats
 
 
 def lazyprop(fn):
@@ -201,13 +202,22 @@ class SingleLayer2dRun(object):
         p.close()
         p.join()
 
-    def plot_average(self):
-        """Plot the time averaged velocity over the run domain."""
-        u_bar = stats.nanmean(self.U, axis=2)
+    def average_velocity(self):
+        """Return the time averaged velocity over the run domain."""
+        u_mod = np.hypot(self.U, self.V)
+        u_mod_bar = stats.nanmean(u_mod, axis=2)
         # plt.contourf(u_bar, 100)
-        return u_bar
+        return u_mod_bar
+
+    def std_velocity(self):
+        """Return the standard deviation of the absolute velocity
+        over the run domain."""
+        u_mod = np.hypot(self.U, self.V)
+        u_mod_std = stats.nanstd(u_mod, axis=2)
+        return u_mod_std
 
 
 if __name__ == '__main__':
+    # TODO: move to tests
     r = SingleLayer2dRun()
     r.make_quivers()
