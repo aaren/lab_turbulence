@@ -90,15 +90,31 @@ class SingleLayer2dFrame(object):
         U = D[:, 6].reshape(shape)
         V = D[:, 7].reshape(shape)
 
-        return X, Y, U, V
+        return dict(X=X, Y=Y, U=U, V=V)
+
+    # TODO: must be a way to do this programmatically, setattr?
+    @lazyprop
+    def x(self):
+        return self.data['X']
+
+    @lazyprop
+    def y(self):
+        return self.data['Y']
+
+    @lazyprop
+    def u(self):
+        return self.data['U']
+
+    @lazyprop
+    def v(self):
+        return self.data['V']
 
     def gen_quiver_plot(self, fig=None):
         """Make a quiver plot of the frame data."""
         if not fig:
             fig = plt.figure()
         ax = plt.axes(xlim=(10, 80), ylim=(0, 50))
-        x, y, u, v = self.data
-        ax.quiver(u, v, scale=200)
+        ax.quiver(self.u, self.v, scale=200)
         quiver_name = self.quiver_name()
         fig.savefig(quiver_name)
 
@@ -124,6 +140,21 @@ class SingleLayer2dRun(object):
         """
         self.files = glob.glob(data_dir + ffmt)
         self.quiver_format = 'quiver/quiver_{f}.png'
+
+    @lazyprop
+    def frames(self):
+        """List of frame objects corresponding to the input files. """
+        frames = [SingleLayer2dFrame(f) for f in self.files]
+        return frames
+
+    # TODO: programmatically, setattr
+    @lazyprop
+    def V(self):
+        return np.dstack([f.v for f in self.frames])
+
+    @lazyprop
+    def U(self):
+        return np.dstack([f.u for f in self.frames])
 
     @staticmethod
     def gen_quiver_plot(fname):
@@ -169,6 +200,13 @@ class SingleLayer2dRun(object):
         p.map(self.gen_quiver_plot, self.files)
         p.close()
         p.join()
+
+    def plot_average(self):
+        """Plot the time averaged velocity over the run domain."""
+        u_bar = stats.nanmean(self.U, axis=2)
+        # plt.contourf(u_bar, 100)
+        return u_bar
+
 
 if __name__ == '__main__':
     r = SingleLayer2dRun()
