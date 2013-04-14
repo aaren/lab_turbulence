@@ -175,7 +175,7 @@ class SingleLayer2dRun(object):
         self.allfiles = sorted(glob.glob(data_dir + 'data/' + ffmt))
         if limits:
             first, last = limits
-            self.files = self.files[first:last]
+            self.files = self.allfiles[first:last]
         else:
             self.files = self.allfiles
         self.nfiles = len(self.files)
