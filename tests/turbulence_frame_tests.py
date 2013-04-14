@@ -1,11 +1,14 @@
 from nose.tools import *
 
-from gc_turbulence.turbulence import SingleLayer2dFrame
-# from turbulence import SingleLayer2dRun
+# from gc_turbulence import turbulence
+# import SingleLayer2dFrame
+# from gc_turbulence.turbulence import SingleLayer2dFrame
+# import gc_turbulence
+from gc_turbulence import SingleLayer2dFrame
 
 
-csv_file = 'tests/ex_data/img.3b4olxqo.000200.csv'
-txt_file = 'tests/ex_data/Export.3atnh4dp.000500.txt'
+csv_file = 'tests/ex_data/data/img.3b4olxqo.000500.csv'
+txt_file = 'tests/ex_data/data/Export.3atnh4dp.000500.txt'
 
 csv_frame = SingleLayer2dFrame(csv_file)
 txt_frame = SingleLayer2dFrame(txt_file)
@@ -34,15 +37,15 @@ def test_shape_txt():
 
 
 def test_data_read_csv():
-    x, y, u, v = csv_frame.data
+    x, y, u, v = csv_frame.x, csv_frame.y, csv_frame.u, csv_frame.v
     assert_equal(x[0, 0], 0)
     assert_equal(y[0, 0], 0)
-    assert_almost_equal(u[0, 0], 0.35160830616951)
+    assert_almost_equal(u[0, 0], -0.137607544660568)
     assert_almost_equal(v[0, 0], 0)
 
 
 def test_data_read_txt():
-    x, y, u, v = txt_frame.data
+    x, y, u, v = txt_frame.x, txt_frame.y, txt_frame.u, txt_frame.v
     assert_equal(x[0, 0], 0)
     assert_equal(y[0, 0], 0)
     assert_almost_equal(u[0, 0], 0.400000005960464)
