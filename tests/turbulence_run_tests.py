@@ -1,4 +1,6 @@
+import os
 from nose.tools import *
+
 import numpy.testing as npt
 from scipy.misc import imread
 
@@ -7,7 +9,7 @@ from gc_turbulence import SingleLayer2dFrame
 
 
 baseline_quiver = 'tests/ex_data/baseline/quiver/quiver_000500.png'
-w_dir = 'tests/ex_data/'
+w_dir = 'tests/ex_data'
 rex = "000*"
 ffmt = 'img.3b4olxqo.{rex}csv'.format(rex=rex)
 run = SingleLayer2dRun(data_dir=w_dir, ffmt=ffmt, parallel=True)
@@ -18,7 +20,7 @@ def test_quivers():
     and compare one of the output images to a reference image.
     """
     run.make_quivers()
-    test_quiver = w_dir + 'quiver/quiver_000500.png'
+    test_quiver = os.path.join(w_dir, 'quiver/quiver_000500.png')
     test_im = imread(test_quiver)
     baseline_im = imread(baseline_quiver)
     npt.assert_array_equal(test_im, baseline_im)
