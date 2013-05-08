@@ -183,6 +183,7 @@ class SingleLayer2dRun(object):
                          the list of files. Default None is to use all
                          the files.
         """
+        self.data_dir = data_dir
         self.allfiles = sorted(glob.glob(data_dir + 'data/' + ffmt))
         if limits:
             first, last = limits
