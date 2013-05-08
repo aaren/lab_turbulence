@@ -50,9 +50,9 @@ class SingleLayer2dFrame(object):
         self.quiver_format = quiver_format
         # TODO: must be a way to do this programmatically, setattr?
         self.x = self.data['X']
-        self.y = self.data['Y']
+        self.z = self.data['Z']
         self.u = self.data['U']
-        self.v = self.data['V']
+        self.w = self.data['W']
 
     @property
     def header(self):
@@ -74,13 +74,20 @@ class SingleLayer2dFrame(object):
         """
         gridsize = self.header['GridSize']
         x = gridsize.split(', ')[0][-2:]
-        y = gridsize.split(', ')[1][-3:-1]
-        shape = (int(y), int(x))
+        z = gridsize.split(', ')[1][-3:-1]
+        shape = (int(z), int(x))
         return shape
 
     @property
     def data(self, delimiter=None):
-        """Extract data from a PIV velocity text file."""
+        """Extract data from a PIV velocity text file.
+
+        N.B. Here I've used the convention (u, w) for (streamwise,
+        vertical) velocity, in contrast to the files which use (u, v).
+        Similarly for (x, z) rather than (x, y).
+
+        This is to be consistent with meteorological convention.
+        """
         if not delimiter:
             # force determine delimiter
             if self.header['FileID'] == 'DSExport.CSV':
@@ -94,17 +101,17 @@ class SingleLayer2dFrame(object):
 
         # reshape to sensible
         X = D[:, 0].reshape(shape)
-        Y = D[:, 1].reshape(shape)
+        Z = D[:, 1].reshape(shape)
         U = D[:, 6].reshape(shape)
-        V = D[:, 7].reshape(shape)
+        W = D[:, 7].reshape(shape)
 
-        return dict(X=X, Y=Y, U=U, V=V)
+        return dict(X=X, Z=Z, U=U, W=W)
 
     def make_quiver_plot(self, quiver_dir=''):
         """Make a quiver plot of the frame data."""
         fig = plt.figure()
         ax = plt.axes(xlim=(10, 80), ylim=(0, 50))
-        ax.quiver(self.u, self.v, scale=200)
+        ax.quiver(self.u, self.w, scale=200)
         quiver_name = self.quiver_name
         quiver_path = quiver_dir + quiver_name
         fig.savefig(quiver_path)
@@ -227,8 +234,8 @@ class SingleLayer2dRun(object):
 
     # TODO: programmatically, setattr
     @lazyprop
-    def V(self):
-        return np.dstack(f.v for f in self.frames)
+    def W(self):
+        return np.dstack(f.w for f in self.frames)
 
     @lazyprop
     def U(self):
@@ -245,7 +252,7 @@ class SingleLayer2dRun(object):
 
     def average_velocity(self):
         """Return the time averaged velocity over the run domain."""
-        u_mod = np.hypot(self.U, self.V)
+        u_mod = np.hypot(self.U, self.W)
         u_mod_bar = stats.nanmean(u_mod, axis=2)
         # plt.contourf(u_bar, 100)
         return u_mod_bar
@@ -253,6 +260,6 @@ class SingleLayer2dRun(object):
     def std_velocity(self):
         """Return the standard deviation of the absolute velocity
         over the run domain."""
-        u_mod = np.hypot(self.U, self.V)
+        u_mod = np.hypot(self.U, self.W)
         u_mod_std = stats.nanstd(u_mod, axis=2)
         return u_mod_std

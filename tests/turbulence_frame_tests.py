@@ -37,16 +37,16 @@ def test_shape_txt():
 
 
 def test_data_read_csv():
-    x, y, u, v = csv_frame.x, csv_frame.y, csv_frame.u, csv_frame.v
+    x, z, u, w = csv_frame.x, csv_frame.z, csv_frame.u, csv_frame.w
     assert_equal(x[0, 0], 0)
-    assert_equal(y[0, 0], 0)
+    assert_equal(z[0, 0], 0)
     assert_almost_equal(u[0, 0], -0.137607544660568)
-    assert_almost_equal(v[0, 0], 0)
+    assert_almost_equal(w[0, 0], 0)
 
 
 def test_data_read_txt():
-    x, y, u, v = txt_frame.x, txt_frame.y, txt_frame.u, txt_frame.v
+    x, z, u, w = txt_frame.x, txt_frame.z, txt_frame.u, txt_frame.w
     assert_equal(x[0, 0], 0)
-    assert_equal(y[0, 0], 0)
+    assert_equal(z[0, 0], 0)
     assert_almost_equal(u[0, 0], 0.400000005960464)
-    assert_almost_equal(v[0, 0], 0)
+    assert_almost_equal(w[0, 0], 0)
