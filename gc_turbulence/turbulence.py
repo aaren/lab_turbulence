@@ -256,9 +256,3 @@ class SingleLayer2dRun(object):
         u_mod = np.hypot(self.U, self.V)
         u_mod_std = stats.nanstd(u_mod, axis=2)
         return u_mod_std
-
-
-if __name__ == '__main__':
-    # TODO: move to tests
-    r = SingleLayer2dRun()
-    r.make_quivers()
