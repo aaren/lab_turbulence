@@ -1,10 +1,14 @@
+import os
 import glob
 
 import numpy as np
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
 from scipy import stats
+
+if 'DISPLAY' not in os.environ:
+    import matplotlib as mpl
+    mpl.use('Agg')
+
+import matplotlib.pyplot as plt
 
 from util import parallel_process
 from util import makedirs_p
