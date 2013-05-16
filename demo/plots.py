@@ -149,6 +149,33 @@ class PlotRun(object):
         elif not save:
             return fig
 
+    def plot_vertical_transects(self):
+        """If we take a vertical profile at a given horizontal
+        position we can make a contour plot of some quantity over
+        the vertical axis and time.
+
+        Similarly, for a given moment in time we could make a contour
+        plot over the horizontal and vertical axes.
+
+        If we make a plots over all of the possible vertical profiles,
+        we end up with a series of plots that can be animated.
+        """
+        for x in range(self.r.U.shape[1]):
+            print "plotting", " {:0>4d}".format(x), "\r",
+            fig = self.plot_vertical_transect(x)
+            fname = 'vertical_transects/vertical_transect_{r}_{x:0>4d}.png'
+            fpath = os.path.join(plot_dir, fname.format(r=self.index, x=x))
+            fig.savefig(fpath)
+
+    def plot_vertical_transect(self, x):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        title = 'Vertical transect {r} {x:0>4d}'.format(r=self.index, x=x)
+        ax.set_title(title)
+        U = self.r.U[:, x, :]
+        ax.contourf(U, 100)
+        return fig
+
 
 if __name__ == '__main__':
     for run in runs:
@@ -159,3 +186,4 @@ if __name__ == '__main__':
         pr.plot_average_velocity()
         pr.plot_median_velocity()
         pr.plot_power()
+        pr.plot_vertical_transects()
