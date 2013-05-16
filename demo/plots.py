@@ -160,21 +160,39 @@ class PlotRun(object):
         If we make a plots over all of the possible vertical profiles,
         we end up with a series of plots that can be animated.
         """
-        for x in range(self.r.U.shape[1]):
-            print "plotting", " {:0>4d}".format(x), "\r",
-            fig = self.plot_vertical_transect(x)
-            fname = 'vertical_transects/vertical_transect_{r}_{x:0>4d}.png'
-            fpath = os.path.join(plot_dir, fname.format(r=self.index, x=x))
-            fig.savefig(fpath)
+        X = range(self.r.U.shape[1])[::-1]
+        arglist = [dict(x=x,
+                        index=self.index,
+                        U=self.r.U,
+                        fname=self.fig_path(x))
+                   for x in X]
+        parallel_process(plot_vertical_transect, arglist)
 
-    def plot_vertical_transect(self, x):
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        title = 'Vertical transect {r} {x:0>4d}'.format(r=self.index, x=x)
-        ax.set_title(title)
-        U = self.r.U[:, x, :]
-        ax.contourf(U, 100)
-        return fig
+    def fig_path(self, x):
+        fname = 'vertical_transects/vertical_transect_{r}_{x:0>4d}.png'
+        fpath = os.path.join(plot_dir, fname.format(r=self.index, x=x))
+        return fpath
+
+
+def plot_vertical_transect(args):
+    """Plot a single vertical transect. Function external to class to
+    allow multiprocessing.
+    """
+    index = args["index"]
+    x = args["x"]
+    U = args["U"]
+    pbar = args['pbar']
+    fname = args['fname']
+    queue = args['queue']
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    title = 'Vertical transect {r} {x:0>4d}'.format(r=index, x=x)
+    ax.set_title(title)
+    U = U[:, x, :]
+    ax.contourf(U, 100)
+    fig.savefig(fname)
+    queue.put(1)
+    pbar.update()
 
 
 if __name__ == '__main__':
@@ -186,4 +204,5 @@ if __name__ == '__main__':
         pr.plot_average_velocity()
         pr.plot_median_velocity()
         pr.plot_power()
+        print "plotting vertical transects..."
         pr.plot_vertical_transects()
