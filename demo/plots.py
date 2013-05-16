@@ -1,11 +1,14 @@
 import os
 
-from gc_turbulence.gc_turbulence.turbulence import SingleLayer2dRun
-# from gc_turbulence import SingleLayer2dRun
-
 import numpy as np
 from scipy import stats
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
+
+from gc_turbulence.gc_turbulence.turbulence import SingleLayer2dRun
+from gc_turbulence.gc_turbulence.util import parallel_process
+# from gc_turbulence import SingleLayer2dRun
 
 
 w_dir = '/home/eeaol/lab/data/flume2/'
