@@ -120,7 +120,7 @@ class PlotRun(object):
         ax_speed = fig.add_subplot(312)
         ax_power = fig.add_subplot(313)
 
-        ax_location.contourf(self.r.U[:, :, 500], 50)
+        ax_location.contourf(self.r.U[:, :, 50], 50)
         ax_location.set_title('Overview')
         ax_location.plot(30, 15, 'wo')
 
