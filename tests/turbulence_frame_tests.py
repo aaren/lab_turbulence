@@ -1,10 +1,6 @@
 from nose.tools import *
 
-# from gc_turbulence import turbulence
-# import SingleLayer2dFrame
-# from gc_turbulence.turbulence import SingleLayer2dFrame
-# import gc_turbulence
-from gc_turbulence import SingleLayer2dFrame
+from ..gc_turbulence.turbulence import SingleLayer2dFrame
 
 
 csv_file = 'tests/ex_data/data/img.3b4olxqo.000500.csv'

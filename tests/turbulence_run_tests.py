@@ -4,8 +4,8 @@ from nose.tools import *
 import numpy.testing as npt
 from scipy.misc import imread
 
-from gc_turbulence import SingleLayer2dRun
-from gc_turbulence import SingleLayer2dFrame
+from ..gc_turbulence.turbulence import SingleLayer2dRun
+from ..gc_turbulence.turbulence import SingleLayer2dFrame
 
 
 baseline_quiver = 'tests/ex_data/baseline/quiver/quiver_000500.png'
