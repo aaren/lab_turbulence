@@ -130,6 +130,99 @@ class SingleLayer2dFrame(object):
         return quiver_fname
 
 
+class SingleLayer3dFrame(object):
+    """Each SingleLayer2dRun is comprised of a series of frames.
+    This class represents one of the frames.
+    """
+    def __init__(self, fname, quiver_format='quiver_{f}.png'):
+        """Initialise a frame object.
+
+        Inputs: fname - filename of a piv velocity text file
+                quiver_format - the format of quiver file output
+        """
+        self.fname = fname
+        self.quiver_format = quiver_format
+        # TODO: must be a way to do this programmatically, setattr?
+        self.x = self.data['X']
+        self.z = self.data['Z']
+        self.u = self.data['U']
+        self.v = self.data['V']
+        self.w = self.data['W']
+
+    @property
+    def header(self):
+        """Pull header from velocity file and return as dictionary."""
+        with open(self.fname) as f:
+            content = f.read().splitlines()
+            head = content[1:7]
+            header_info = {}
+            for h in head:
+                k = h.split(':')[0]
+                v = ':'.join(h.split(':')[1:])
+                header_info[k] = v
+        return header_info
+
+    @property
+    def shape(self):
+        """Get the gridsize from a piv text file by filtering
+        the metadata in the header.
+        """
+        gridsize = self.header['GridSize']
+        x = gridsize.split(', ')[0][-2:]
+        z = gridsize.split(', ')[1][-3:-1]
+        shape = (int(z), int(x))
+        return shape
+
+    @property
+    def data(self, delimiter=None):
+        """Extract data from a PIV velocity text file.
+
+        N.B. Here I've used the convention (u, w) for (streamwise,
+        vertical) velocity, in contrast to the files which use (u, v).
+        Similarly for (x, z) rather than (x, y).
+
+        In my notation, v is the spanwise velocity.
+
+        This is to be consistent with meteorological convention.
+        """
+        if not delimiter:
+            # force determine delimiter
+            if self.header['FileID'] == 'DSExport.CSV':
+                delimiter = ','
+            elif self.header['FileID'] == 'DSExport.TAB':
+                delimiter = None
+        # extract data
+        # TODO: dtypes
+        D = np.genfromtxt(self.fname, skip_header=9, delimiter=delimiter)
+        shape = self.shape
+
+        # reshape to sensible
+        X = D[:, 2].reshape(shape)
+        Z = D[:, 3].reshape(shape)
+        U = D[:, 4].reshape(shape)
+        V = D[:, 6].reshape(shape)
+        W = D[:, 5].reshape(shape)
+
+        return dict(X=X, Z=Z, U=U, V=V, W=W)
+
+    def make_quiver_plot(self, quiver_dir=''):
+        """Make a quiver plot of the frame data."""
+        fig = plt.figure()
+        ax = plt.axes(xlim=(10, 80), ylim=(0, 50))
+        ax.quiver(self.u, self.w, scale=200)
+        quiver_name = self.quiver_name
+        quiver_path = os.path.join(quiver_dir, quiver_name)
+        fig.savefig(quiver_path)
+
+    @property
+    def quiver_name(self):
+        """Generate name for quiver plot given an input text
+        filename.
+        """
+        new_name = self.fname.split('.')[-2]
+        quiver_fname = self.quiver_format.format(f=new_name)
+        return quiver_fname
+
 # These functions are out here because they need to be pickleable
 # for multiprocessing to work. Shame of this is that they can't
 # access class state.
