@@ -173,7 +173,7 @@ class SingleLayer2dRun(object):
     perhaps can be made more general.
     """
     def __init__(self, data_dir='data', ffmt='Export*txt',
-                 parallel=True, limits=None):
+                 parallel=True, limits=None, x_lims=(0, -1)):
         """Initialise a run.
 
         Inputs: data_dir - directory containing the velocity files
@@ -182,9 +182,12 @@ class SingleLayer2dRun(object):
                 limits - (start, finish) frame indices to use in selecting
                          the list of files. Default None is to use all
                          the files.
+                x_lims - (first, last) indices of horizontal region to use
+                         in each frame. e.g. (10, -10): exclude 10 cells at
+                         each side.
         """
         self.data_dir = data_dir
-        self.allfiles = sorted(glob.glob(os.path.join(data_dir ,'data',  ffmt)))
+        self.allfiles = sorted(glob.glob(os.path.join(data_dir, 'data', ffmt)))
         if limits:
             first, last = limits
             self.files = self.allfiles[first:last]
@@ -194,6 +197,7 @@ class SingleLayer2dRun(object):
         self.quiver_dir = os.path.join(data_dir, 'quiver')
         self.quiver_format = 'quiver_{f}.png'
         self.parallel = parallel
+        self.x_lims = x_lims
 
     @lazyprop
     def frames(self):
