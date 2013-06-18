@@ -6,13 +6,18 @@ from scipy.misc import imread
 
 from ..gc_turbulence.turbulence import SingleLayer2dRun
 from ..gc_turbulence.turbulence import SingleLayer2dFrame
+from ..gc_turbulence.turbulence import SingleLayer3dRun
+from ..gc_turbulence.turbulence import SingleLayer3dFrame
 
 
 baseline_quiver = 'tests/ex_data/baseline/quiver/quiver_000500.png'
 w_dir = 'tests/ex_data'
-rex = "000*"
-ffmt = 'img.3b4olxqo.{rex}csv'.format(rex=rex)
+
+ffmt = 'img.3b4olxqo.{rex}csv'.format(rex='000*')
 run = SingleLayer2dRun(data_dir=w_dir, ffmt=ffmt, parallel=True)
+
+stereo_ffmt = 'stereo_test.3eodh6wx.{rex}.txt'.format(rex='00001*')
+stereo_run = SingleLayer3dRun(data_dir=w_dir, ffmt=stereo_ffmt, parallel=True)
 
 
 def test_quivers():
@@ -32,3 +37,13 @@ def test_frames():
     assert_equal(U.shape[-1], run.nfiles)
     frame = SingleLayer2dFrame(run.files[0])
     npt.assert_array_equal(U[:, :, 0], frame.u)
+
+
+def test_stereo_frames():
+    """Test the reading of stereo data."""
+    for U in ('U', 'V', 'W'):
+        U = getattr(stereo_run, U)
+        assert_equal(U.shape[-1], stereo_run.nfiles)
+        frame = SingleLayer3dFrame(stereo_run.files[0])
+        u = getattr(frame, U.lower())
+        npt.assert_array_equal(U[:, :, 0], u)
