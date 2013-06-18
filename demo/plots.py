@@ -1,4 +1,5 @@
 import os
+import argparse
 
 import numpy as np
 from scipy import stats
@@ -7,8 +8,7 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 from gc_turbulence.gc_turbulence.turbulence import SingleLayer2dRun
-from gc_turbulence.gc_turbulence.util import parallel_process
-# from gc_turbulence import SingleLayer2dRun
+import gc_turbulence.gc_turbulence.util as util
 
 
 w_dir = '/home/eeaol/lab/data/flume2/'
@@ -187,25 +187,52 @@ def plot_vertical_transect(args):
     pbar = args['pbar']
     fname = args['fname']
     queue = args['queue']
+    levels = args['levels']
     fig = plt.figure()
     ax = fig.add_subplot(111)
     title = 'Vertical transect {r} {x:0>4d}'.format(r=index, x=x)
     ax.set_title(title)
     U = U[:, x, :]
-    ax.contourf(U, 100)
+    contourf = ax.contourf(U, levels)
+    fig.colorbar(contourf)
+    util.makedirs_p(os.path.dirname(fname))
     fig.savefig(fname)
     queue.put(1)
     pbar.update()
 
 
+def test_run(index='3ban2y82'):
+    """Return a test run"""
+    wd = os.path.join(w_dir, index)
+    start = run_lims[index][0]
+    end = run_lims[index][1]
+    run_kwargs = {'data_dir':  wd,
+                  'ffmt':      'img*csv',
+                  'parallel':  True,
+                  'limits':    (start, end)}
+    r = PlotRun(run=index, run_kwargs=run_kwargs, t_width=400)
+    return r
+
+
 if __name__ == '__main__':
-    for run in runs:
-        print "Plotting " + run + "..."
-        pr = PlotRun(run)
-        pr.plot_histogram_U()
-        pr.plot_histogram_W()
-        pr.plot_average_velocity()
-        pr.plot_median_velocity()
-        pr.plot_power()
-        print "plotting vertical transects..."
-        pr.plot_vertical_transects()
+    test_run_index = '3ban2y82'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--test",
+                        help="single run test mode",
+                        nargs='?',
+                        const=test_run_index)
+    args = parser.parse_args()
+
+    if os.environ['HOSTNAME'] != 'doug-and-duck':
+        print "Not running on doug-and-duck, are you sure?"
+        raw_input()
+
+    if args.test:
+        r = test_run(index=test_run_index)
+        r.main()
+
+    else:
+        for run in runs:
+            print "Extracting " + run + "...\n"
+            pr = PlotRun(run)
+            pr.main()
