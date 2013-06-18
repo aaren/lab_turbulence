@@ -259,16 +259,3 @@ class SingleLayer2dRun(object):
         arglist = [dict(fname=f, quiver_dir=self.quiver_dir) for f in self.files]
         parallel_process(gen_quiver_plot, arglist)
 
-    def average_velocity(self):
-        """Return the time averaged velocity over the run domain."""
-        u_mod = np.hypot(self.U, self.W)
-        u_mod_bar = stats.nanmean(u_mod, axis=2)
-        # plt.contourf(u_bar, 100)
-        return u_mod_bar
-
-    def std_velocity(self):
-        """Return the standard deviation of the absolute velocity
-        over the run domain."""
-        u_mod = np.hypot(self.U, self.W)
-        u_mod_std = stats.nanstd(u_mod, axis=2)
-        return u_mod_std
