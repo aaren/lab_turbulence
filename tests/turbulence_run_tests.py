@@ -4,10 +4,9 @@ from nose.tools import *
 import numpy.testing as npt
 from scipy.misc import imread
 
+from ..gc_turbulence.turbulence import SingleLayerFrame
 from ..gc_turbulence.turbulence import SingleLayer2dRun
-from ..gc_turbulence.turbulence import SingleLayer2dFrame
 from ..gc_turbulence.turbulence import SingleLayer3dRun
-from ..gc_turbulence.turbulence import SingleLayer3dFrame
 
 
 baseline_quiver = 'tests/ex_data/baseline/quiver/quiver_000500.png'
@@ -35,7 +34,7 @@ def test_frames():
     """Generates an array of horizontal velocities from the test data."""
     U = run.U
     assert_equal(U.shape[-1], run.nfiles)
-    frame = SingleLayer2dFrame(run.files[0])
+    frame = SingleLayerFrame(fname=run.files[0])
     npt.assert_array_equal(U[:, :, 0], frame.u)
 
 
@@ -44,7 +43,7 @@ def test_stereo_frames():
     for vel in ('U', 'V', 'W'):
         U = getattr(stereo_run, vel)
         assert_equal(U.shape[-1], stereo_run.nfiles)
-        frame = SingleLayer3dFrame(stereo_run.files[0])
+        frame = SingleLayerFrame(fname=stereo_run.files[0], stereo=True)
         assert_equal(frame.fname, stereo_run.files[0])
         u = getattr(frame, vel.lower())
         npt.assert_array_equal(U[:, :, 0], u)

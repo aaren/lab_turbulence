@@ -1,16 +1,14 @@
 from nose.tools import *
 
-from ..gc_turbulence.turbulence import SingleLayer2dFrame
-from ..gc_turbulence.turbulence import SingleLayer3dFrame
-
+from ..gc_turbulence.turbulence import SingleLayerFrame
 
 csv_file = 'tests/ex_data/data/img.3b4olxqo.000500.csv'
 txt_file = 'tests/ex_data/data/Export.3atnh4dp.000500.txt'
 stereo_file = 'tests/ex_data/data/stereo_test.3eodh6wx.000011.txt'
 
-csv_frame = SingleLayer2dFrame(csv_file)
-txt_frame = SingleLayer2dFrame(txt_file)
-stereo_frame = SingleLayer3dFrame(stereo_file)
+csv_frame = SingleLayerFrame(fname=csv_file)
+txt_frame = SingleLayerFrame(fname=txt_file)
+stereo_frame = SingleLayerFrame(fname=stereo_file, stereo=True)
 
 
 def test_header_csv():
@@ -49,6 +47,7 @@ def test_data_read_txt():
     assert_equal(z[0, 0], 0)
     assert_almost_equal(u[0, 0], 0.400000005960464)
     assert_almost_equal(w[0, 0], 0)
+
 
 def test_data_read_stereo():
     x = stereo_frame.x
