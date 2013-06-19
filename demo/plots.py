@@ -55,8 +55,9 @@ class PlotRun(object):
         wd = os.path.join(w_dir, run)
         if not run_kwargs:
             run_kwargs = {'data_dir':  wd,
-                          'ffmt':      'img*csv',
+                          'index':     self.index,
                           'parallel':  True,
+                          'caching':   True,
                           'limits':    run_lims[run]}
         self.r = SingleLayer2dRun(**run_kwargs)
         self.u_range = (-10, 5)
@@ -400,8 +401,9 @@ def test_run(index='3ban2y82'):
     start = run_lims[index][0]
     end = run_lims[index][1]
     run_kwargs = {'data_dir':  wd,
-                  'ffmt':      'img*csv',
+                  'index':     index,
                   'parallel':  True,
+                  'caching':   True,
                   'limits':    (start, end)}
     r = PlotRun(run=index, run_kwargs=run_kwargs, t_width=400)
     return r
@@ -422,6 +424,9 @@ if __name__ == '__main__':
 
     if args.test:
         r = test_run(index=test_run_index)
+        # calling PlotRun loads everything anyway so can
+        # call save here
+        r.r.save()
         r.main()
 
     else:
