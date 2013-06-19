@@ -41,9 +41,10 @@ def test_frames():
 
 def test_stereo_frames():
     """Test the reading of stereo data."""
-    for U in ('U', 'V', 'W'):
-        U = getattr(stereo_run, U)
+    for vel in ('U', 'V', 'W'):
+        U = getattr(stereo_run, vel)
         assert_equal(U.shape[-1], stereo_run.nfiles)
         frame = SingleLayer3dFrame(stereo_run.files[0])
-        u = getattr(frame, U.lower())
+        assert_equal(frame.fname, stereo_run.files[0])
+        u = getattr(frame, vel.lower())
         npt.assert_array_equal(U[:, :, 0], u)
