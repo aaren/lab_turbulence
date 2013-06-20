@@ -113,21 +113,6 @@ class SingleLayerFrame(object):
         return quiver_fname
 
 
-class SingleLayer2dFrame(SingleLayerFrame):
-    """Each SingleLayer2dRun is comprised of a series of frames.
-    This class represents one of the frames.
-    """
-    pass
-
-
-class SingleLayer3dFrame(object):
-    """Each SingleLayer3dRun is comprised of a series of frames.
-    This class represents one of the frames.
-    """
-    def __init__(self, **kwargs):
-        SingleLayerFrame.__init__(self, stereo=True, **kwargs)
-
-
 # These functions are out here because they need to be pickleable
 # for multiprocessing to work. Shame of this is that they can't
 # access class state.
@@ -159,7 +144,7 @@ def gen_quiver_plot(args):
     queue = args['queue']
     pbar = args['pbar']
     quiver_dir = args['quiver_dir']
-    frame = SingleLayer2dFrame(fname)
+    frame = SingleLayerFrame(fname, stereo=args['stereo'])
     frame.make_quiver_plot(quiver_dir=quiver_dir)
     pbar.update()
     queue.put(1)
@@ -291,7 +276,9 @@ class SingleLayerRun(object):
         """
         print("Generating {n} quiver plots".format(n=len(self.files)))
         makedirs_p(self.quiver_dir)
-        arglist = [dict(fname=f, quiver_dir=self.quiver_dir) for f in self.files]
+        quiver_kwargs = {'quiver_dir': self.quiver_dir,
+                         'stereo':     self.stereo}
+        arglist = [dict(quiver_kwargs, fname=f) for f in self.files]
         parallel_process(gen_quiver_plot, arglist)
 
     def save(self):
@@ -356,6 +343,14 @@ class SingleLayer2dRun(SingleLayerRun):
         SingleLayerRun.__init__(self, stereo=False, **kwargs)
 
     @property
+    def X(self):
+        return np.dstack(f.x for f in self.frames)
+
+    @property
+    def Z(self):
+        return np.dstack(f.z for f in self.frames)
+
+    @property
     def U(self):
         return np.dstack(f.u for f in self.frames)
 
@@ -371,6 +366,14 @@ class SingleLayer3dRun(SingleLayerRun):
     """
     def __init__(self, **kwargs):
         SingleLayerRun.__init__(self, stereo=True, **kwargs)
+
+    @property
+    def X(self):
+        return np.dstack(f.x for f in self.frames)
+
+    @property
+    def Z(self):
+        return np.dstack(f.z for f in self.frames)
 
     @property
     def U(self):
