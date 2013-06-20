@@ -286,7 +286,7 @@ class SingleLayerRun(object):
         path = self.cache_path
         makedirs_p(os.path.dirname(path))
         with open(path, 'wb') as output:
-            pickle.dump(self, output, protocol=2)
+            pickle.dump(self.__dict__, output, protocol=2)
 
     def load(self):
         """Load saved instance data from pickle file.
@@ -300,8 +300,8 @@ class SingleLayerRun(object):
         [SO]: http://stackoverflow.com/q/2709800/how-to-pickle-yourself
         """
         with open(self.cache_path, 'rb') as infile:
-            tmp_self = pickle.load(infile)
-            self.__dict__.update(tmp_self.__dict__)
+            tmp_dict = pickle.load(infile)
+            self.__dict__.update(tmp_dict)
 
     def toggle_cache(self, what=None):
         """Toggle the state of run caching by changing the
