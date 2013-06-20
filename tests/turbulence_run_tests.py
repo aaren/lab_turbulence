@@ -9,6 +9,13 @@ from ..gc_turbulence.turbulence import SingleLayer2dRun
 from ..gc_turbulence.turbulence import SingleLayer3dRun
 
 
+# delete all cache
+for root, dirs, files in os.walk('tests/ex_data/cache', topdown=False):
+    for name in files:
+        os.remove(os.path.join(root, name))
+    for name in dirs:
+        os.rmdir(os.path.join(root, name))
+
 baseline_quiver = 'tests/ex_data/baseline/quiver/quiver_000500.png'
 w_dir = 'tests/ex_data'
 
@@ -87,7 +94,6 @@ def test_pickle_run():
 
 def test_pickle_run_autosave():
     """When frames are loaded, run should save automatically."""
-
     frames_attr_name = '_lazy_frames'
 
     # create a fresh run, no frames loaded (default)
