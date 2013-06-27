@@ -63,13 +63,13 @@ class PlotRun(object):
         self.u_range = (-10, 5)
         self.w_range = (-10, 5)
         # hack, remove the x at the edges
-        self.U = self.r.U[:, 15:-15, :]
-        self.W = self.r.W[:, 15:-15, :]
+        for d in ('U', 'W', 'T'):
+            arr = getattr(self.r, d)
+            setattr(self, d, arr[:, 15:-15, :])
+
         self.T_width = t_width
         self.Uf = self.reshape_to_current_relative(self.U, -50, self.T_width)
         self.Wf = self.reshape_to_current_relative(self.W, -50, self.T_width)
-        self.U = self.Uf
-        self.W = self.Wf
         # colour levels
         self.levels = np.linspace(*self.u_range, num=100)
 
@@ -193,35 +193,67 @@ class PlotRun(object):
 
     def plot_power(self, save=True):
         # fourier transform over the time axis
-        # wtf is this?
-        U_point = np.abs(self.U[15, 30, :])
-
         fig = plt.figure()
-        ax_location = fig.add_subplot(311)
-        ax_speed = fig.add_subplot(312)
-        ax_power = fig.add_subplot(313)
+        ax_location = fig.add_subplot(211)
+        ax_power = fig.add_subplot(212)
 
-        space_mean = stats.nanmean(self.U, axis=1)
+        space_mean = stats.nanmean(self.Uf, axis=1)
         ax_location.contourf(space_mean, self.levels)
         ax_location.set_title('Overview')
-        ax_location.plot(30, 15, 'wo')
 
-        # ???
-        times = np.array(range(len(U_point))) * 0.01
+        times = self.T
 
-        ax_speed.plot(times, U_point)
-        ax_speed.set_title('Absolute streamwise velocity')
-        ax_speed.set_xlabel('Time (s)')
-        ax_speed.set_ylabel('Streamwise velocity (pixels)')
+        # compute fft over time
+        power_spectrum = np.abs(np.fft.fft(self.U, axis=2)) ** 2
+        freqs = np.fft.fftfreq(times.shape[-1], d=0.01)
+        # power_spectrum is 3 dimensional. there is a 1d power
+        # spectrum for each x, z point
+        # we want to overlay all of these on the same plot
+        # matplotlib can cope with a 2d array as y, with the first
+        # dimension the same as that of the x axis
+        # as the time dimension is the last one, we can flatten the
+        # 3d array and resize the frequency array to match
 
-        power_spectrum = np.abs(np.fft.fft(U_point)) ** 2
-        freqs = np.fft.fftfreq(len(U_point), d=0.01)
+        f_ps = power_spectrum.flatten()
+        f_freqs = np.resize(freqs, f_ps.shape)
 
-        ax_power.plot(freqs, power_spectrum, 'r.')
+        # histogram the power data
+        # http://stackoverflow.com/questions/10439961/efficiently-create-a-density-plot-for-high-density-regions-points-for-sparse-re
+        xlo, xhi = 0.1, 50
+        ylo, yhi = 1E-5, 1E7
+        res = 100
+        X = np.logspace(np.log10(xlo), np.log10(xhi), res)
+        Y = np.logspace(np.log10(ylo), np.log10(yhi), res)
+        bins = (X, Y)
+        thresh = 1
+        hh, lx, ly = np.histogram2d(f_freqs, f_ps, bins=bins)
+
+        # either mask out less than thresh, or set vmin=thresh in
+        # pcolormesh
+        mhh = np.ma.masked_where(hh < thresh, hh)
+
+        ax_power.pcolormesh(X, Y, mhh.T, cmap='jet',
+                            norm=mpl.colors.LogNorm())
+
+        # scatter plot for low density?
+        # find what the points are
+        # lhh = np.ma.masked_where(hh > thresh, hh)
+        # low_f_freqs = f_freqs
+        # ax_power.plot(low_f_freqs, low_f_ps, 'b.')
+
+        # overlay a -5 / 3 line
+        y0 = 1E3  # where to start in y? (power)
+        x0, x1 = 3E-1, 1E1  # where in x should we go from and to? (power)
+        x53 = np.linspace(x0, x1)
+        y53 = x53 ** (-5 / 3) * y0
+        ax_power.plot(x53, y53, 'k', linewidth=2)
+        ax_power.text(x0, y0, '-5/3')
+
         ax_power.set_title('Power Spectrum')
         ax_power.set_xscale('log')
         ax_power.set_yscale('log')
-        ax_power.set_xlim(0, 50)
+        ax_power.set_xlim(xlo, xhi)
+        ax_power.set_ylim(ylo, yhi)
         ax_power.set_xlabel('Frequency (Hz)')
         ax_power.set_ylabel('Power')
 
@@ -329,20 +361,20 @@ class PlotRun(object):
         return fpath
 
     def main(self):
-        print "U distribution...",
-        self.plot_histogram_U()
-        print "W distribution...",
-        self.plot_histogram_W()
-        print "mean velocity...",
-        self.plot_average_velocity()
-        print "median velocity...",
-        self.plot_median_velocity()
+        # print "U distribution...",
+        # self.plot_histogram_U()
+        # print "W distribution...",
+        # self.plot_histogram_W()
+        # print "mean velocity...",
+        # self.plot_average_velocity()
+        # print "median velocity...",
+        # self.plot_median_velocity()
         print "power spectrum...",
         self.plot_power()
-        print "autocorrelation..."
-        self.plot_autocorrelation()
-        print "vertical transects..."
-        self.plot_vertical_transects()
+        # print "autocorrelation..."
+        # self.plot_autocorrelation()
+        # print "vertical transects..."
+        # self.plot_vertical_transects()
         # print "time slices..."
         # self.plot_time_slices()
 
