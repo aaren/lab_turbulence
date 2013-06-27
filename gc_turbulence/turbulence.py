@@ -30,6 +30,8 @@ class SingleLayerFrame(object):
         """
         self.fname = fname
         self.quiver_format = quiver_format
+        self.content_start = self.content_line + 2
+        self.header_start = self.header_line + 1
         if stereo is False:
             self.columns = {'x': 0,
                             'z': 1,
@@ -45,12 +47,34 @@ class SingleLayerFrame(object):
         for k in self.columns:
             setattr(self, k, self.data[k])
 
+    def find_line(self, string):
+        """Find the line on which the string occurs
+        and return it."""
+        with open(self.fname) as f:
+            for line_number, line in enumerate(f.readlines()):
+                if string in line:
+                    return line_number
+
+    @property
+    def header_line(self):
+        """Find the line on which the header string occurs
+        and return it."""
+        header_string = ">>*HEADER*<<"
+        return self.find_line(header_string)
+
+    @property
+    def content_line(self):
+        """Find the line on which the header string occurs
+        and return it."""
+        content_string = ">>*DATA*<<"
+        return self.find_line(content_string)
+
     @property
     def header(self):
         """Pull header from velocity file and return as dictionary."""
         with open(self.fname) as f:
             content = f.read().splitlines()
-            head = content[1:7]
+            head = content[self.header_start: self.content_start]
             header_info = {}
             for h in head:
                 k = h.split(':')[0]
@@ -87,7 +111,9 @@ class SingleLayerFrame(object):
                 delimiter = None
         # extract data
         # TODO: dtypes
-        D = np.genfromtxt(self.fname, skip_header=9, delimiter=delimiter)
+        D = np.genfromtxt(self.fname,
+                          skip_header=self.content_start,
+                          delimiter=delimiter)
         shape = self.shape
 
         # extract from given columns and reshape to sensible

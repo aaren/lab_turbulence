@@ -11,6 +11,14 @@ txt_frame = SingleLayerFrame(fname=txt_file)
 stereo_frame = SingleLayerFrame(fname=stereo_file, stereo=True)
 
 
+def test_find_line():
+    """Check that we can determine where the header and content
+    start.
+    """
+    assert_equal(csv_frame.header_line, 0)
+    assert_equal(csv_frame.content_line, 7)
+
+
 def test_header_csv():
     """Check that the csv file has header read
     properly.
