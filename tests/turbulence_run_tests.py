@@ -130,6 +130,15 @@ def test_pickle_run_autosave():
     cache_run.load()
     assert(hasattr(cache_run, frames_attr_name))
 
+    # switching on cache_reload should delete the cache file on
+    # instantiation
+    assert(os.path.exists(run.cache_path))
+    cache_run = SingleLayer2dRun(cache_dir='tests/ex_data/cache',
+                                 caching=True,
+                                 cache_reload=True,
+                                 **run_kwargs)
+    assert(not(os.path.exists(run.cache_path)))
+
 
 def test_reload():
     run.reload()

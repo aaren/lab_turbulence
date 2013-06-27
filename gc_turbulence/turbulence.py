@@ -184,7 +184,8 @@ class SingleLayerRun(object):
     """
     def __init__(self, index='test', data_dir='data', rex='*',
                  parallel=True, limits=None, x_lims=(0, -1),
-                 stereo=False, caching=True, cache_dir=None):
+                 stereo=False, caching=True, cache_reload=False,
+                 cache_dir=None):
         """Initialise a run.
 
         Inputs: data_dir - directory containing the velocity files
@@ -200,6 +201,7 @@ class SingleLayerRun(object):
                            each side.
                 stereo   - boolean, is it a Stereo PIV run or not?
                 caching  - boolean, enable caching?
+                cache_reload - boolean, reload the data anyway?
                 cache_dir - where is the cache file found?
         """
         self.index = index
@@ -232,6 +234,10 @@ class SingleLayerRun(object):
         # name for frame storage attribute
         self.lazy_frames = '_lazy_frames'
         self.caching = caching
+        # delete the cache file if we are reloading
+        self.cache_reload = cache_reload
+        if self.cache_reload and os.path.exists(self.cache_path):
+            os.remove(self.cache_path)
         # if caching enabled and the cache file exists, load it
         if self.caching and os.path.exists(self.cache_path):
             self.load()

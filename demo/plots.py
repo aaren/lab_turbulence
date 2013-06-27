@@ -395,16 +395,17 @@ def plot_vertical_transect(args):
     pbar.update()
 
 
-def test_run(index='3ban2y82'):
+def test_run(index='3ban2y82', reload=False):
     """Return a test run"""
     wd = os.path.join(w_dir, index)
     start = run_lims[index][0]
     end = run_lims[index][1]
-    run_kwargs = {'data_dir':  wd,
-                  'index':     index,
-                  'parallel':  True,
-                  'caching':   True,
-                  'limits':    (start, end)}
+    run_kwargs = {'data_dir':     wd,
+                  'index':        index,
+                  'parallel':     True,
+                  'caching':      True,
+                  'cache_reload': reload,
+                  'limits':       (start, end)}
     r = PlotRun(run=index, run_kwargs=run_kwargs, t_width=400)
     return r
 
@@ -416,6 +417,9 @@ if __name__ == '__main__':
                         help="single run test mode",
                         nargs='?',
                         const=test_run_index)
+    parser.add_argument("--reload",
+                        help="force reloading cache files",
+                        action='store_true')
     args = parser.parse_args()
 
     if os.environ['HOSTNAME'] != 'doug-and-duck':
@@ -423,7 +427,7 @@ if __name__ == '__main__':
         raw_input()
 
     if args.test:
-        r = test_run(index=test_run_index)
+        r = test_run(index=test_run_index, reload=args.reload)
         # calling PlotRun loads everything anyway so can
         # call save here
         r.r.save()
@@ -432,5 +436,12 @@ if __name__ == '__main__':
     else:
         for run in runs:
             print "Extracting " + run + "...\n"
-            pr = PlotRun(run)
+            wd = os.path.join(w_dir, run)
+            run_kwargs = {'data_dir':     wd,
+                          'index':        run,
+                          'parallel':     True,
+                          'caching':      True,
+                          'cache_reload': args.reload,
+                          'limits':       run_lims[run]}
+            pr = PlotRun(run, run_kwargs)
             pr.main()
