@@ -46,6 +46,7 @@ class SingleLayerFrame(object):
                             'w': 5}
         for k in self.columns:
             setattr(self, k, self.data[k])
+        self.t = float(self.header['TimeStamp'])
 
     def find_line(self, string):
         """Find the line on which the string occurs
@@ -369,6 +370,10 @@ class SingleLayer2dRun(SingleLayerRun):
         SingleLayerRun.__init__(self, stereo=False, **kwargs)
 
     @property
+    def T(self):
+        return np.hstack(f.t for f in self.frames)
+
+    @property
     def X(self):
         return np.dstack(f.x for f in self.frames)
 
@@ -392,6 +397,10 @@ class SingleLayer3dRun(SingleLayerRun):
     """
     def __init__(self, **kwargs):
         SingleLayerRun.__init__(self, stereo=True, **kwargs)
+
+    @property
+    def T(self):
+        return np.dstack(f.t for f in self.frames)
 
     @property
     def X(self):

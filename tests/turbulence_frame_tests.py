@@ -11,7 +11,7 @@ txt_frame = SingleLayerFrame(fname=txt_file)
 stereo_frame = SingleLayerFrame(fname=stereo_file, stereo=True)
 
 
-def test_find_line():
+def test_find_line_csv():
     """Check that we can determine where the header and content
     start.
     """
@@ -70,3 +70,8 @@ def test_data_read_stereo():
     assert_almost_equal(u[50, 50], 0.00388681469485164)
     assert_almost_equal(w[50, 50], -0.00251218792982399)
     assert_almost_equal(v[50, 50], 0.00109881022945046)
+
+
+def test_timestamp_csv():
+    """Check we are reading the timestamp correctly."""
+    assert_equal(csv_frame.t, 5.00)

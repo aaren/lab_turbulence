@@ -133,3 +133,8 @@ def test_pickle_run_autosave():
 
 def test_reload():
     run.reload()
+
+
+def test_timestamps():
+    """Length of time vector should be the same as number of files."""
+    assert_equal(run.nfiles, run.T.shape[0])
