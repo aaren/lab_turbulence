@@ -65,6 +65,7 @@ class PlotRun(object):
         # hack, remove the x at the edges
         self.U = self.r.U[:, 15:-15, :]
         self.W = self.r.W[:, 15:-15, :]
+        self.T = self.r.T
         self.T_width = t_width
         self.Uf = self.reshape_to_current_relative(self.U, -50, self.T_width)
         self.Wf = self.reshape_to_current_relative(self.W, -50, self.T_width)
@@ -193,9 +194,6 @@ class PlotRun(object):
 
     def plot_power(self, save=True):
         # fourier transform over the time axis
-        # wtf is this?
-        U_point = np.abs(self.U[15, 30, :])
-
         fig = plt.figure()
         ax_location = fig.add_subplot(311)
         ax_speed = fig.add_subplot(312)
@@ -204,18 +202,17 @@ class PlotRun(object):
         space_mean = stats.nanmean(self.U, axis=1)
         ax_location.contourf(space_mean, self.levels)
         ax_location.set_title('Overview')
-        ax_location.plot(30, 15, 'wo')
 
-        # ???
-        times = np.array(range(len(U_point))) * 0.01
+        times = self.T
 
         ax_speed.plot(times, U_point)
         ax_speed.set_title('Absolute streamwise velocity')
         ax_speed.set_xlabel('Time (s)')
         ax_speed.set_ylabel('Streamwise velocity (pixels)')
 
-        power_spectrum = np.abs(np.fft.fft(U_point)) ** 2
-        freqs = np.fft.fftfreq(len(U_point), d=0.01)
+        # compute fft over time
+        power_spectrum = np.abs(np.fft.fft(self.U, axis=2)) ** 2
+        freqs = np.fft.fftfreq(times.shape[0], d=0.01)
 
         ax_power.plot(freqs, power_spectrum, 'r.')
         ax_power.set_title('Power Spectrum')
