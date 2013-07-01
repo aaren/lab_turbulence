@@ -194,9 +194,8 @@ class PlotRun(object):
     def plot_power(self, save=True):
         # fourier transform over the time axis
         fig = plt.figure()
-        ax_location = fig.add_subplot(311)
-        ax_speed = fig.add_subplot(312)
-        ax_power = fig.add_subplot(313)
+        ax_location = fig.add_subplot(211)
+        ax_power = fig.add_subplot(212)
 
         space_mean = stats.nanmean(self.Uf, axis=1)
         ax_location.contourf(space_mean, self.levels)
@@ -204,17 +203,21 @@ class PlotRun(object):
 
         times = self.T
 
-        ax_speed.plot(times, U_point)
-        ax_speed.set_title('Absolute streamwise velocity')
-        ax_speed.set_xlabel('Time (s)')
-        ax_speed.set_ylabel('Streamwise velocity (pixels)')
-
         # compute fft over time
         power_spectrum = np.abs(np.fft.fft(self.U, axis=2)) ** 2
-        freqs = np.fft.fftfreq(times.shape[0], d=0.01)
-
-        ax_power.plot(freqs, power_spectrum, 'r.')
         freqs = np.fft.fftfreq(times.shape[-1], d=0.01)
+        # power_spectrum is 3 dimensional. there is a 1d power
+        # spectrum for each x, z point
+        # we want to overlay all of these on the same plot
+        # matplotlib can cope with a 2d array as y, with the first
+        # dimension the same as that of the x axis
+        # as the time dimension is the last one, we can flatten the
+        # 3d array and resize the frequency array to match
+
+        flat_power_spectrum = power_spectrum.flatten()
+        flat_freqs = np.resize(freqs, flat_power_spectrum.shape)
+
+        ax_power.plot(flat_freqs, flat_power_spectrum, 'ro')
         ax_power.set_title('Power Spectrum')
         ax_power.set_xscale('log')
         ax_power.set_yscale('log')
