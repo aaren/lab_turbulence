@@ -2,6 +2,7 @@ import os
 import argparse
 
 import numpy as np
+import scipy
 from scipy import stats
 from scipy import ndimage as ndi
 import matplotlib as mpl
@@ -214,14 +215,38 @@ class PlotRun(object):
         # as the time dimension is the last one, we can flatten the
         # 3d array and resize the frequency array to match
 
-        flat_power_spectrum = power_spectrum.flatten()
-        flat_freqs = np.resize(freqs, flat_power_spectrum.shape)
+        f_ps = power_spectrum.flatten()
+        f_freqs = np.resize(freqs, f_ps.shape)
 
-        ax_power.plot(flat_freqs, flat_power_spectrum, 'ro')
+        # histogram the power data
+        # http://stackoverflow.com/questions/10439961/efficiently-create-a-density-plot-for-high-density-regions-points-for-sparse-re
+        xlo, xhi = 0.01, 50
+        ylo, yhi = 1E-5, 1E7
+        bins = [np.logspace(xlo, xhi, 1000), np.logspace(ylo, yhi, 1000)]
+        xyrange = [[xlo, xhi], [xlo, xhi]]
+        thresh = 3
+        import ipdb; ipdb.set_trace() ### XXX BREAKPOINT
+
+        hh, locx, locy = scipy.histogram2d(f_freqs, f_ps, range=xyrange, bins=bins)
+        posx = np.digitize(f_freqs, locx)
+        posy = np.digitize(f_ps, locy)
+
+        ind = (posx > 0) & (posx <= bins[0]) & (posy > 0) & (posy <= bins[1])
+        hhsub = hh[posx[ind] - 1, posy[ind] - 1]
+        low_f_freqs = f_freqs[ind][hhsub < thresh]
+        low_f_ps = f_ps[ind][hhsub < thresh]
+        hh[hh < thresh] = np.nan
+
+        # colors for high density
+        plt.pcolormesh(hh.T, cmap='jet')
+        # scatter plot for low density
+        ax_power.plot(low_f_freqs, low_f_ps, 'b.')
+
         ax_power.set_title('Power Spectrum')
         ax_power.set_xscale('log')
         ax_power.set_yscale('log')
-        ax_power.set_xlim(0, 50)
+        ax_power.set_xlim(xlo, xhi)
+        ax_power.set_ylim(ylo, yhi)
         ax_power.set_xlabel('Frequency (Hz)')
         ax_power.set_ylabel('Power')
 
