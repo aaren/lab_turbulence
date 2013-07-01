@@ -63,14 +63,13 @@ class PlotRun(object):
         self.u_range = (-10, 5)
         self.w_range = (-10, 5)
         # hack, remove the x at the edges
-        self.U = self.r.U[:, 15:-15, :]
-        self.W = self.r.W[:, 15:-15, :]
-        self.T = self.r.T
+        for d in ('U', 'W', 'T'):
+            arr = getattr(self.r, d)
+            setattr(self, d, arr[:, 15:-15, :])
+
         self.T_width = t_width
         self.Uf = self.reshape_to_current_relative(self.U, -50, self.T_width)
         self.Wf = self.reshape_to_current_relative(self.W, -50, self.T_width)
-        self.U = self.Uf
-        self.W = self.Wf
         # colour levels
         self.levels = np.linspace(*self.u_range, num=100)
 
@@ -199,7 +198,7 @@ class PlotRun(object):
         ax_speed = fig.add_subplot(312)
         ax_power = fig.add_subplot(313)
 
-        space_mean = stats.nanmean(self.U, axis=1)
+        space_mean = stats.nanmean(self.Uf, axis=1)
         ax_location.contourf(space_mean, self.levels)
         ax_location.set_title('Overview')
 
@@ -215,6 +214,7 @@ class PlotRun(object):
         freqs = np.fft.fftfreq(times.shape[0], d=0.01)
 
         ax_power.plot(freqs, power_spectrum, 'r.')
+        freqs = np.fft.fftfreq(times.shape[-1], d=0.01)
         ax_power.set_title('Power Spectrum')
         ax_power.set_xscale('log')
         ax_power.set_yscale('log')
