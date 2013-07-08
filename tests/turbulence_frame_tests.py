@@ -73,5 +73,11 @@ def test_data_read_stereo():
 
 
 def test_timestamp_csv():
-    """Check we are reading the timestamp correctly."""
-    assert_equal(csv_frame.t, 5.00)
+    """Check we are reading the timestamp correctly. Each frame has
+    an array of the same dimension as the spatial arrays, with the
+    timestamp in each element.
+    """
+    # same dimension as space arrays
+    assert_tuple_equal(csv_frame.t.shape, csv_frame.x.shape)
+    # timestamp in all elements
+    assert((csv_frame.t == 5.00).all())

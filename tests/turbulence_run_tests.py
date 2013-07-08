@@ -145,5 +145,5 @@ def test_reload():
 
 
 def test_timestamps():
-    """Length of time vector should be the same as number of files."""
-    assert_equal(run.nfiles, run.T.shape[0])
+    """Depth of time array should be the same as number of files."""
+    assert_equal(run.nfiles, run.T.shape[2])
