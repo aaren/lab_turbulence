@@ -469,7 +469,7 @@ def cache_test_run(index='3ban2y82'):
                   'caching':      True,
                   'cache_reload': False,
                   'limits':       (start, end)}
-    r = PlotRun(run=index, run_kwargs=run_kwargs, t_width=400)
+    r = PlotRun(run=index, run_kwargs=run_kwargs, t_width=800)
     return r
 
 
