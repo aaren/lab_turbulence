@@ -72,6 +72,7 @@ class PlotRun(object):
         self.T_width = t_width
         self.Uf = self.reshape_to_current_relative(self.U, -50, self.T_width)
         self.Wf = self.reshape_to_current_relative(self.W, -50, self.T_width)
+        self.Tf = self.reshape_to_current_relative(self.T, -50, self.T_width)
         # colour levels
         self.levels = np.linspace(*self.u_range, num=100)
 
