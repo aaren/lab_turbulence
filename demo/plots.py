@@ -162,7 +162,7 @@ class PlotRun(object):
             return fig
 
     def plot_average_velocity(self, save=True):
-        u_mod = np.hypot(self.U, self.W)
+        u_mod = np.hypot(self.Uf, self.Wf)
         u_mod_bar = stats.nanmean(u_mod, axis=2)
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -378,23 +378,20 @@ class PlotRun(object):
         fpath = os.path.join(plot_dir, fname.format(r=self.index, x=x))
         return fpath
 
-    def main(self):
-        print "U distribution...",
-        self.plot_histogram_U()
-        print "W distribution...",
-        self.plot_histogram_W()
-        print "mean velocity...",
-        self.plot_average_velocity()
-        print "median velocity...",
-        self.plot_median_velocity()
-        print "power spectrum...",
-        self.plot_power()
-        print "autocorrelation..."
-        self.plot_autocorrelation()
-        print "vertical transects..."
-        self.plot_vertical_transects()
-        print "time slices..."
-        self.plot_time_slices()
+    def main(self, plots=None):
+        if not plots:
+            default_plots = ['histogram_U',
+                             'histogram_W',
+                             'average_velocity',
+                             'median_velocity',
+                             'power',
+                             'autocorrelation',
+                             'vertical_transects',
+                             'time_slices']
+        for plot in plots:
+            print "plotting", plot
+            plot_func = getattr(self, 'plot_' + plot)
+            plot_func()
 
 
 def plot_time_slice(args):
@@ -478,15 +475,30 @@ def cache_test_run(index='3ban2y82'):
 
 if __name__ == '__main__':
     test_run_index = '3ban2y82'
+    default_plots = ['histogram_U',
+                     'histogram_W',
+                     'average_velocity',
+                     'median_velocity',
+                     'power',
+                     'autocorrelation',
+                     'vertical_transects',
+                     'time_slices']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="single run test mode",
                         nargs='?',
                         const=test_run_index)
     parser.add_argument("--cache_test",
-                        help="single run test mode",
+                        help="single run test mode, load from cache",
                         nargs='?',
                         const=test_run_index)
+    plot_help = ("List of plots to make. Valid names are any of "
+                 "{plots}. Default is to plot everything.")
+    parser.add_argument('plots',
+                        help=plot_help.format(plots=default_plots),
+                        nargs='*',
+                        type=str,
+                        default=default_plots)
     parser.add_argument("--reload",
                         help="force reloading cache, "
                              "n.b. deletes old cache file",
@@ -502,12 +514,12 @@ if __name__ == '__main__':
         # calling PlotRun loads everything anyway so can
         # call save here
         r.r.save()
-        r.main()
+        r.main(plots=args.plots)
 
     elif args.cache_test:
         r = cache_test_run(index=test_run_index)
         # calling PlotRun loads everything anyway so can
-        r.main()
+        r.main(plots=args.plots)
 
     else:
         for run in runs:
@@ -520,4 +532,4 @@ if __name__ == '__main__':
                           'cache_reload': args.reload,
                           'limits':       run_lims[run]}
             pr = PlotRun(run, run_kwargs)
-            pr.main()
+            pr.main(plots=args.plots)
