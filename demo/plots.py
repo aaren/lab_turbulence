@@ -224,10 +224,13 @@ class PlotRun(object):
 
         # compute average fft over domain
         domain_fft = stats.nanmean(stats.nanmean(fft_U))
-        ax_fft.plot(freqs, domain_fft, 'k.')
+        ax_fft.plot(freqs, domain_fft.real, 'k.', label='Re')
+        ax_fft.plot(freqs, domain_fft.imag, 'r.', label='Im')
         ax_fft.set_yscale('log')
+        ax_fft.set_ylim(1E-2, 1E3)
         ax_fft.set_xlim(0, 50)
         ax_fft.set_xscale('log')
+        ax_fft.legend()
 
         f_ps = power_spectrum.flatten()
         f_freqs = np.resize(freqs, f_ps.shape)
