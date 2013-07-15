@@ -196,18 +196,23 @@ class PlotRun(object):
 
     def plot_power(self, save=True):
         # fourier transform over the time axis
-        fig = plt.figure()
-        ax_location = fig.add_subplot(211)
-        ax_power = fig.add_subplot(212)
-
+        fig, axes = plt.subplots(nrows=3)
+        ax_location, ax_power, ax_fft = axes
         space_mean = stats.nanmean(self.Uf, axis=1)
         ax_location.contourf(space_mean, self.levels)
         ax_location.set_title('Overview')
 
-        times = self.T
+        ax_fft.set_title('domain fft')
 
+        times = self.Tf
+
+        # limit to bottom half of domain
+        U = self.Uf
+        half = U.shape[1] / 2
+        U = U[:, :half, :]
         # compute fft over time
-        power_spectrum = np.abs(np.fft.fft(self.U, axis=2)) ** 2
+        fft_U = np.fft.fft(U, axis=2)
+        power_spectrum = np.abs(fft_U) ** 2
         freqs = np.fft.fftfreq(times.shape[-1], d=0.01)
         # power_spectrum is 3 dimensional. there is a 1d power
         # spectrum for each x, z point
@@ -216,6 +221,13 @@ class PlotRun(object):
         # dimension the same as that of the x axis
         # as the time dimension is the last one, we can flatten the
         # 3d array and resize the frequency array to match
+
+        # compute average fft over domain
+        domain_fft = stats.nanmean(stats.nanmean(fft_U))
+        ax_fft.plot(freqs, domain_fft, 'k.')
+        ax_fft.set_yscale('log')
+        ax_fft.set_xlim(0, 50)
+        ax_fft.set_xscale('log')
 
         f_ps = power_spectrum.flatten()
         f_freqs = np.resize(freqs, f_ps.shape)
