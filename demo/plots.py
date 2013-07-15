@@ -8,12 +8,14 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
+import sys
+sys.path.append(os.path.join(os.environ['HOME'], 'code'))
 from gc_turbulence.gc_turbulence.turbulence import SingleLayer2dRun
 import gc_turbulence.gc_turbulence.util as util
 
 
 w_dir = '/home/eeaol/lab/data/flume2/'
-plot_dir = '/home/eeaol/code/gc_turbulence/demo/plots/'
+plot_dir = os.path.join(os.environ['HOME'], 'code/gc_turbulence/demo/plots/')
 
 # preliminary runs that we have so far
 runs = ['3b4olxqo', '3ban2y82', '3bb5hsxk', '3bbn7639', '3bc4rhc0']
@@ -361,22 +363,22 @@ class PlotRun(object):
         return fpath
 
     def main(self):
-        # print "U distribution...",
-        # self.plot_histogram_U()
-        # print "W distribution...",
-        # self.plot_histogram_W()
-        # print "mean velocity...",
-        # self.plot_average_velocity()
-        # print "median velocity...",
-        # self.plot_median_velocity()
+        print "U distribution...",
+        self.plot_histogram_U()
+        print "W distribution...",
+        self.plot_histogram_W()
+        print "mean velocity...",
+        self.plot_average_velocity()
+        print "median velocity...",
+        self.plot_median_velocity()
         print "power spectrum...",
         self.plot_power()
-        # print "autocorrelation..."
-        # self.plot_autocorrelation()
-        # print "vertical transects..."
-        # self.plot_vertical_transects()
-        # print "time slices..."
-        # self.plot_time_slices()
+        print "autocorrelation..."
+        self.plot_autocorrelation()
+        print "vertical transects..."
+        self.plot_vertical_transects()
+        print "time slices..."
+        self.plot_time_slices()
 
 
 def plot_time_slice(args):
@@ -442,10 +444,30 @@ def test_run(index='3ban2y82', reload=False):
     return r
 
 
+def cache_test_run(index='3ban2y82'):
+    """Return a test run"""
+    wd = '/home/aaron/code/gc_turbulence/tests/ex_data/tmp'
+    # TODO: make this path more explicit w/o being machine specific
+    start = run_lims[index][0]
+    end = run_lims[index][1]
+    run_kwargs = {'data_dir':     wd,
+                  'index':        index,
+                  'parallel':     True,
+                  'caching':      True,
+                  'cache_reload': False,
+                  'limits':       (start, end)}
+    r = PlotRun(run=index, run_kwargs=run_kwargs, t_width=400)
+    return r
+
+
 if __name__ == '__main__':
     test_run_index = '3ban2y82'
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
+                        help="single run test mode",
+                        nargs='?',
+                        const=test_run_index)
+    parser.add_argument("--cache_test",
                         help="single run test mode",
                         nargs='?',
                         const=test_run_index)
@@ -454,7 +476,7 @@ if __name__ == '__main__':
                         action='store_true')
     args = parser.parse_args()
 
-    if os.environ['HOSTNAME'] != 'doug-and-duck':
+    if not ('HOSTNAME' in os.environ) or (os.environ['HOSTNAME'] != 'doug-and-duck'):
         print "Not running on doug-and-duck, are you sure?"
         raw_input()
 
@@ -463,6 +485,11 @@ if __name__ == '__main__':
         # calling PlotRun loads everything anyway so can
         # call save here
         r.r.save()
+        r.main()
+
+    elif args.cache_test:
+        r = cache_test_run(index=test_run_index)
+        # calling PlotRun loads everything anyway so can
         r.main()
 
     else:

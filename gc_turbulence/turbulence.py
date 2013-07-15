@@ -185,7 +185,7 @@ class SingleLayerRun(object):
     """
     def __init__(self, index='test', data_dir='data', rex='*',
                  parallel=True, limits=None, x_lims=(0, -1),
-                 stereo=False, caching=True, cache_reload=False,
+                 stereo=False, caching=False, cache_reload=False,
                  cache_dir=None):
         """Initialise a run.
 
@@ -215,33 +215,55 @@ class SingleLayerRun(object):
         cache_fname = '{index}.run_object'.format(index=self.index)
         self.cache_path = os.path.join(self.cache_dir, cache_fname)
 
-        self.data_dir = data_dir
-        f_re = "*{index}{rex}".format(index=index, rex=rex)
-        self.allfiles = sorted(glob.glob(os.path.join(data_dir, 'data', f_re)))
-
-        if limits:
-            first, last = limits
-            self.files = self.allfiles[first:last]
-        else:
-            self.files = self.allfiles
-
-        self.nfiles = len(self.files)
-        self.quiver_dir = os.path.join(data_dir, 'quiver')
-        self.quiver_format = 'quiver_{f}.png'
-        self.parallel = parallel
-        self.x_lims = x_lims
-        self.stereo = stereo
-
         # name for frame storage attribute
         self.lazy_frames = '_lazy_frames'
         self.caching = caching
         # delete the cache file if we are reloading
         self.cache_reload = cache_reload
-        if self.cache_reload and os.path.exists(self.cache_path):
+        cache_exists = os.path.exists(self.cache_path)
+        if self.cache_reload and cache_exists:
             os.remove(self.cache_path)
-        # if caching enabled and the cache file exists, load it
-        if self.caching and os.path.exists(self.cache_path):
-            self.load()
+        # if caching enabled and the cache file exists and we are
+        # not reloading, load the cache file
+        if self.caching and cache_exists and not self.cache_reload:
+            self.init_load_from_cache()
+        elif not os.path.exists(self.cache_path):
+            raise UserWarning("No cache file!")
+        # if not caching, load up from the files
+        elif not self.caching:
+            self.data_dir = data_dir
+            self.rex = rex
+            self.parallel = parallel
+            self.limits = limits
+            self.x_lims = x_lims
+            self.stereo = stereo
+
+            self.init_not_load_from_cache()
+
+    def init_load_from_cache(self):
+        """Initialisation to follow if we are loading directly from
+        the cache file."""
+        self.load()
+
+    def init_not_load_from_cache(self):
+        """Initialisation to follow if we are not loading directly from
+        the cache file."""
+        f_re = "*{index}{rex}".format(index=self.index, rex=self.rex)
+        self.allfiles = sorted(glob.glob(os.path.join(self.data_dir, 'data', f_re)))
+
+        if len(self.allfiles) == 0:
+            raise UserWarning('No files found in data dir')
+            exit(1)
+
+        if self.limits:
+            first, last = self.limits
+            self.files = self.allfiles[first:last]
+        else:
+            self.files = self.allfiles
+
+        self.nfiles = len(self.files)
+        self.quiver_dir = os.path.join(self.data_dir, 'quiver')
+        self.quiver_format = 'quiver_{f}.png'
 
     @property
     def frames(self):
