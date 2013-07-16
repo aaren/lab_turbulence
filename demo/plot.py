@@ -1,5 +1,15 @@
 #!/home/aaron/src/canopy/Enthought/Canopy_64bit/User/bin/python
 
+"""
+Interactive usage example:
+
+    import plot
+    r = plot.cache_test_run()
+    # access the U array
+    r.U
+
+"""
+
 import os
 import argparse
 
