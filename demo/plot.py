@@ -93,7 +93,8 @@ class PlotRun(object):
         """Take the velocity data and transform it to the current
         relative frame.
         """
-        # tf is the time of front passage as f(x)
+        # tf is the time of front passage as f(x), i.e. supply this
+        # with an argument in x and we get the corresponding time
         tf = front_detect(self.U)
         # reshape, taking a constant T time intervals behind front
         X = np.indices((vel.shape[1],)).squeeze()
