@@ -103,6 +103,47 @@ class PlotRun(object):
         Uf = np.transpose(U_, (0, 2, 1))
         return Uf
 
+    def plot_hovmoller(self, zi=10, save=True):
+        """Create a hovmoller of the streamwise velocity at the
+        given z index (default 10) and overlay the detected front
+        position vector.
+
+        Also plot the front relative hovmoller
+        """
+        fig, axes = plt.subplots(nrows=2)
+
+        ax_U = axes[0]
+        ax_U.set_title('Hovmoller of streamwise velocity')
+        ax_U.set_xlabel('time')
+        ax_U.set_ylabel('distance')
+
+        ax_Uf = axes[1]
+        ax_Uf.set_title('Hovmoller of shifted streamwise velocity')
+        ax_Uf.set_xlabel('time')
+        ax_Uf.set_ylabel('distance')
+
+        contourfU = ax_U.contourf(self.U[zi, :, :], levels=self.levels)
+        contourfUf = ax_Uf.contourf(self.Uf[zi, :, :], levels=self.levels)
+
+        x = np.indices((self.U.shape[1],)).squeeze()
+        tf = front_detect(self.U)
+        ax_U.plot(tf(x), x, label='detected front')
+        ax_Uf.axvline(-self.front_offset, label='detected front')
+
+        ax_U.legend()
+        ax_Uf.legend()
+
+        fname = 'hovmoller_U_' + self.index + '.png'
+        fpath = os.path.join(plot_dir, fname)
+
+        plt.colorbar(contourfU)
+        fig.tight_layout()
+
+        if save:
+            fig.savefig(fpath)
+        elif not save:
+            return fig
+
     def plot_histogram_U(self, save=True):
         U = self.U
         uf = U.flatten()
@@ -394,7 +435,8 @@ class PlotRun(object):
 
     def main(self, plots=None):
         if not plots:
-            default_plots = ['histogram_U',
+            default_plots = ['hovmoller',
+                             'histogram_U',
                              'histogram_W',
                              'average_velocity',
                              'median_velocity',
@@ -489,7 +531,8 @@ def cache_test_run(index='3ban2y82'):
 
 if __name__ == '__main__':
     test_run_index = '3ban2y82'
-    default_plots = ['histogram_U',
+    default_plots = ['hovmoller',
+                     'histogram_U',
                      'histogram_W',
                      'average_velocity',
                      'median_velocity',
