@@ -40,6 +40,18 @@ run_lims = {'3b4olxqo': (2200, 4400),
             '3bc4rhc0': (1300, 3000)}
 
 
+# plots to create by default (based on function names in PlotRun)
+default_plots = ['hovmoller',
+                 'histogram_U',
+                 'histogram_W',
+                 'average_velocity',
+                 'median_velocity',
+                 'power',
+                 'autocorrelation',
+                 'vertical_transects',
+                 'time_slices']
+
+
 def front_detect(U):
     # It would be useful to detect where the front is in each image, so
     # that we can do meaningful statistics relative to this.
@@ -442,17 +454,7 @@ class PlotRun(object):
         fpath = os.path.join(plot_dir, fname.format(r=self.index, x=x))
         return fpath
 
-    def main(self, plots=None):
-        if not plots:
-            default_plots = ['hovmoller',
-                             'histogram_U',
-                             'histogram_W',
-                             'average_velocity',
-                             'median_velocity',
-                             'power',
-                             'autocorrelation',
-                             'vertical_transects',
-                             'time_slices']
+    def main(self, plots=default_plots):
         for plot in plots:
             print "plotting", plot
             plot_func = getattr(self, 'plot_' + plot)
@@ -540,15 +542,6 @@ def cache_test_run(index='3ban2y82'):
 
 if __name__ == '__main__':
     test_run_index = '3ban2y82'
-    default_plots = ['hovmoller',
-                     'histogram_U',
-                     'histogram_W',
-                     'average_velocity',
-                     'median_velocity',
-                     'power',
-                     'autocorrelation',
-                     'vertical_transects',
-                     'time_slices']
     parser = argparse.ArgumentParser()
     parser.add_argument("--test",
                         help="single run test mode",
