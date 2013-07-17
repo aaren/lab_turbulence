@@ -96,6 +96,11 @@ class PlotRun(object):
 
         # time of front passage as f(x)
         self.tf = front_detect(self.U)
+
+        # front velocity dx/dt
+        # TODO: sort out non dimensional units
+        self.front_velocity = 1 / self.tf[1]
+
         self.T_width = t_width
         self.front_offset = -50
         self.Uf = self.reshape_to_current_relative(self.U, self.front_offset, self.T_width)
