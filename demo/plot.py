@@ -382,6 +382,26 @@ class PlotRun(object):
         elif not save:
             return fig
 
+    def plot_mean_shear(self, save=True):
+        fig, ax = plt.subplots()
+
+        shear = np.hypot(self.dUfz, self.dWfz)
+        # TODO: the axis used in nanmean is different for U and Uf
+        # calcs - change Uf dims to make consistent?
+        mean_shear = stats.nanmean(shear, axis=1)
+
+        contourf = ax.contourf(mean_shear, 100)
+        ax.set_title('Mean vertical shear')
+
+        fig.colorbar(contourf)
+
+        fname = 'mean_shear_' + self.index + '.png'
+        fpath = os.path.join(plot_dir, fname)
+        if save:
+            fig.savefig(fpath)
+        elif not save:
+            return fig
+
     def plot_time_slices(self):
         """If we take a vertical profile at a given horizontal
         position we can make a contour plot of some quantity over
