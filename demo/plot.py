@@ -47,6 +47,7 @@ default_plots = ['hovmoller',
                  'average_velocity',
                  'median_velocity',
                  'power',
+                 'mean_vorticity',
                  'autocorrelation',
                  'vertical_transects',
                  'time_slices']
@@ -356,6 +357,26 @@ class PlotRun(object):
         fname = 'power_spectrum_' + self.index + '.png'
         fpath = os.path.join(plot_dir, fname)
         # TODO: can a decorator replace this functionality?
+        if save:
+            fig.savefig(fpath)
+        elif not save:
+            return fig
+
+    def plot_mean_vorticity(self, save=True):
+        fig, ax = plt.subplots()
+
+        vorticity = self.dWfx - self.dUfz
+        # TODO: the axis used in nanmean is different for U and Uf
+        # calcs - change Uf dims to make consistent?
+        mean_vorticity = stats.nanmean(vorticity, axis=1)
+
+        contourf = ax.contourf(mean_vorticity, 100)
+        ax.set_title('Mean vorticity')
+
+        fig.colorbar(contourf)
+
+        fname = 'mean_vorticity_' + self.index + '.png'
+        fpath = os.path.join(plot_dir, fname)
         if save:
             fig.savefig(fpath)
         elif not save:
