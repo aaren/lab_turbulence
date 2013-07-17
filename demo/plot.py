@@ -86,6 +86,13 @@ class PlotRun(object):
         self.Uf = self.reshape_to_current_relative(self.U, self.front_offset, self.T_width)
         self.Wf = self.reshape_to_current_relative(self.W, self.front_offset, self.T_width)
         self.Tf = self.reshape_to_current_relative(self.T, self.front_offset, self.T_width)
+
+        # gradients
+        self.dUz, self.dUx, self.dUt = np.gradient(self.U)
+        self.dWz, self.dWx, self.dWt = np.gradient(self.W)
+        self.dUfz, self.dUfx, self.dUft = np.gradient(self.Uf)
+        self.dWfz, self.dWfx, self.dWft = np.gradient(self.Wf)
+
         # colour levels
         self.levels = np.linspace(*self.u_range, num=100)
 
