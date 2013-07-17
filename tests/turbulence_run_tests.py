@@ -85,11 +85,11 @@ def test_pickle_run():
 
     # delete the cache file
     os.remove(run2.cache_path)
-    # U should not be loaded
-    run3 = SingleLayer2dRun(cache_dir='tests/ex_data/cache',
-                            caching=True,
-                            **run_kwargs)
-    assert(not(hasattr(run3, frames_attr_name)))
+    # should get UserWarning
+    assert_raises(UserWarning, SingleLayer2dRun,
+                               cache_dir='tests/ex_data/cache',
+                               caching=True,
+                               **run_kwargs)
 
 
 def test_pickle_run_autosave():

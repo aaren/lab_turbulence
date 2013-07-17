@@ -221,16 +221,20 @@ class SingleLayerRun(object):
         # delete the cache file if we are reloading
         self.cache_reload = cache_reload
         cache_exists = os.path.exists(self.cache_path)
-        if self.cache_reload and cache_exists:
+        if cache_reload and cache_exists:
+            print self.cache_path
+            print "there was a cache and i'm deleting it"
             os.remove(self.cache_path)
+        # reestablish existence
+        cache_exists = os.path.exists(self.cache_path)
         # if caching enabled and the cache file exists and we are
         # not reloading, load the cache file
-        if self.caching and cache_exists and not self.cache_reload:
+        if caching and cache_exists:
             self.init_load_from_cache()
-        elif not os.path.exists(self.cache_path):
+        elif caching and not cache_exists and not cache_reload:
             raise UserWarning("No cache file!")
         # if not caching, load up from the files
-        elif not self.caching:
+        elif not caching:
             self.data_dir = data_dir
             self.rex = rex
             self.parallel = parallel
