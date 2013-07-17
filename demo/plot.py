@@ -81,6 +81,8 @@ class PlotRun(object):
             arr = getattr(self.r, d)
             setattr(self, d, arr[:, 15:-15, :])
 
+        # time of front passage as f(x)
+        self.tf = front_detect(self.U)
         self.T_width = t_width
         self.front_offset = -50
         self.Uf = self.reshape_to_current_relative(self.U, self.front_offset, self.T_width)
@@ -102,8 +104,8 @@ class PlotRun(object):
         """
         # tf is the time of front passage as f(x), i.e. supply this
         # with an argument in x and we get the corresponding time
-        tf = front_detect(self.U)
         # reshape, taking a constant T time intervals behind front
+        tf = self.tf
         X = np.indices((vel.shape[1],)).squeeze()
         U_ = np.dstack(vel[:, x, int(tf(x)) + T0:int(tf(x)) + T1] for x in X)
         # reshape this to same dimensions as before
