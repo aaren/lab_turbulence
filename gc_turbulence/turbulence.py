@@ -206,6 +206,12 @@ class SingleLayerRun(object):
                 cache_dir - where is the cache file found?
         """
         self.index = index
+        self.data_dir = data_dir
+        self.rex = rex
+        self.parallel = parallel
+        self.limits = limits
+        self.x_lims = x_lims
+        self.stereo = stereo
 
         # default cache_dir
         if not cache_dir:
@@ -234,14 +240,8 @@ class SingleLayerRun(object):
         elif caching and not cache_exists and not cache_reload:
             raise UserWarning("No cache file!")
         # if not caching, load up from the files
-        elif not caching:
-            self.data_dir = data_dir
-            self.rex = rex
-            self.parallel = parallel
-            self.limits = limits
-            self.x_lims = x_lims
-            self.stereo = stereo
-
+        else:
+            print "loading from raw data..."
             self.init_not_load_from_cache()
 
     def init_load_from_cache(self):
