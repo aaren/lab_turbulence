@@ -49,8 +49,7 @@ default_plots = ['hovmoller',
                  'power',
                  'mean_vorticity',
                  'autocorrelation',
-                 'vertical_transects',
-                 'time_slices']
+                 'vertical_transects']
 
 
 def front_detect(U):
