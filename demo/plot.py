@@ -52,6 +52,7 @@ default_plots = ['hovmoller',
                  'std_velocity',
                  'std_velocity_U',
                  'std_velocity_W',
+                 'mean_shear',
                  'wavelet',
                  'autocorrelation']
 
