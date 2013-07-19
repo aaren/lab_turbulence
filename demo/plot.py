@@ -272,7 +272,7 @@ class PlotRun(object):
             return fig
 
     def plot_median_velocity(self, save=True):
-        u_mod = np.hypot(self.U, self.W)
+        u_mod = np.hypot(self.Uf, self.Wf)
         u_mod_med = stats.nanmedian(u_mod, axis=1)
         fig = plt.figure()
         ax = fig.add_subplot(111)
