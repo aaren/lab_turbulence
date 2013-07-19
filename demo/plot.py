@@ -637,6 +637,7 @@ if __name__ == '__main__':
                         nargs='*',
                         type=str,
                         default=default_plots)
+    # TODO: add argument for reload without plotting anything
     parser.add_argument("--reload",
                         help="force reloading cache, "
                              "n.b. deletes old cache file",
