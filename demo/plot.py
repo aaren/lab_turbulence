@@ -172,8 +172,10 @@ class PlotRun(object):
         fname = 'hovmoller_U_' + self.index + '.png'
         fpath = os.path.join(plot_dir, fname)
 
-        plt.colorbar(contourfU)
-        fig.tight_layout()
+        # make space for shared colorbar
+        fig.tight_layout(rect=(0, 0, 0.9, 1))
+        cax = fig.add_axes([0.9, 0.1, 0.03, 0.8])
+        fig.colorbar(contourfU, cax=cax, use_gridspec=True)
 
         if save:
             fig.savefig(fpath)
