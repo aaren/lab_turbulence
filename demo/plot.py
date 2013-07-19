@@ -244,7 +244,7 @@ class PlotRun(object):
 
     def plot_average_velocity(self, save=True):
         u_mod = np.hypot(self.Uf, self.Wf)
-        u_mod_bar = stats.nanmean(u_mod, axis=2)
+        u_mod_bar = stats.nanmean(u_mod, axis=1)
         fig = plt.figure()
         ax = fig.add_subplot(111)
         contourf = ax.contourf(u_mod_bar, self.levels)
@@ -261,10 +261,11 @@ class PlotRun(object):
 
     def plot_median_velocity(self, save=True):
         u_mod = np.hypot(self.U, self.W)
-        u_mod_med = stats.nanmedian(u_mod, axis=2)
+        u_mod_med = stats.nanmedian(u_mod, axis=1)
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        ax.contourf(u_mod_med, self.levels)
+        contourf = ax.contourf(u_mod_med, self.levels)
+        fig.colorbar(contourf)
         ax.set_title('Median speed')
         ax.set_xlabel('horizontal')
         ax.set_ylabel('vertical')
@@ -452,7 +453,7 @@ class PlotRun(object):
         """Plot the autocorrelation as a function of height of
         the mean front relative frame.
         """
-        U = stats.nanmean(self.U, axis=1)
+        U = stats.nanmean(self.Uf, axis=1)
         # correlate two 1d arrays
         # np.correlate(U, U, mode='full')[len(U) - 1:]
         # but we want to autocorrelate a 2d array over a given
