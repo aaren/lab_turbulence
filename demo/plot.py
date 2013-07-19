@@ -137,14 +137,23 @@ class PlotRun(object):
 
         Also plot the front relative hovmoller
         """
-        fig, axes = plt.subplots(nrows=2)
+        fig, axes = plt.subplots(nrows=3)
 
-        ax_U = axes[0]
+        ax_avg = axes[0]
+        ax_avg.set_title('Time averaged streamwise velocity')
+        ax_avg.set_xlabel('time')
+        ax_avg.set_ylabel('height')
+
+        Uf_bar = stats.nanmean(self.Uf, axis=1)
+        ax_avg.contourf(Uf_bar, levels=self.levels)
+        ax_avg.axhline(zi, linewidth=2, color='black')
+
+        ax_U = axes[1]
         ax_U.set_title('Hovmoller of streamwise velocity')
         ax_U.set_xlabel('time')
         ax_U.set_ylabel('distance')
 
-        ax_Uf = axes[1]
+        ax_Uf = axes[2]
         ax_Uf.set_title('Hovmoller of shifted streamwise velocity')
         ax_Uf.set_xlabel('time')
         ax_Uf.set_ylabel('distance')
