@@ -49,6 +49,9 @@ default_plots = ['hovmoller',
                  'median_velocity',
                  'power',
                  'mean_vorticity',
+                 'std_velocity',
+                 'std_velocity_U',
+                 'std_velocity_W',
                  'wavelet',
                  'autocorrelation']
 
@@ -282,6 +285,55 @@ class PlotRun(object):
         ax.set_xlabel('horizontal')
         ax.set_ylabel('vertical')
         fname = 'median_velocity_' + self.index + '.png'
+        fpath = os.path.join(plot_dir, fname)
+        if save:
+            fig.savefig(fpath)
+        elif not save:
+            return fig
+
+    def plot_std_velocity(self, save=True):
+        u_mod = np.hypot(self.Uf, self.Wf)
+        u_mod_med = stats.nanstd(u_mod, axis=1)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        contourf = ax.contourf(u_mod_med, levels=np.linspace(0, 2, 100))
+        fig.colorbar(contourf)
+        ax.set_title('rms absolute velocity')
+        ax.set_xlabel('horizontal')
+        ax.set_ylabel('vertical')
+        fname = 'std_velocity_abs' + self.index + '.png'
+        fpath = os.path.join(plot_dir, fname)
+        if save:
+            fig.savefig(fpath)
+        elif not save:
+            return fig
+
+    def plot_std_velocity_U(self, save=True):
+        u_mod_med = stats.nanstd(self.Uf, axis=1)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        contourf = ax.contourf(u_mod_med, levels=np.linspace(0, 2, 100))
+        fig.colorbar(contourf)
+        ax.set_title('rms streamwise velocity')
+        ax.set_xlabel('horizontal')
+        ax.set_ylabel('vertical')
+        fname = 'std_velocity_U' + self.index + '.png'
+        fpath = os.path.join(plot_dir, fname)
+        if save:
+            fig.savefig(fpath)
+        elif not save:
+            return fig
+
+    def plot_std_velocity_W(self, save=True):
+        u_mod_med = stats.nanstd(self.Wf, axis=1)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        contourf = ax.contourf(u_mod_med, levels=np.linspace(0, 1.5, 100))
+        fig.colorbar(contourf)
+        ax.set_title('rms vertical velocity')
+        ax.set_xlabel('horizontal')
+        ax.set_ylabel('vertical')
+        fname = 'std_velocity_W' + self.index + '.png'
         fpath = os.path.join(plot_dir, fname)
         if save:
             fig.savefig(fpath)
