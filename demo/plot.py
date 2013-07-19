@@ -1,4 +1,4 @@
-#!/home/aaron/src/canopy/Enthought/Canopy_64bit/User/bin/python
+#!/usr/bin/env python
 
 """
 Interactive usage example:
