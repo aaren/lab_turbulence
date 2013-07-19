@@ -15,6 +15,7 @@ import argparse
 
 import numpy as np
 from scipy import stats
+from scipy import signal
 from scipy import ndimage as ndi
 import matplotlib as mpl
 mpl.use('Agg')
@@ -48,8 +49,8 @@ default_plots = ['hovmoller',
                  'median_velocity',
                  'power',
                  'mean_vorticity',
-                 'autocorrelation',
-                 'vertical_transects']
+                 'wavelet',
+                 'autocorrelation']
 
 
 def front_detect(U):
@@ -401,6 +402,27 @@ class PlotRun(object):
         fig.colorbar(contourf)
 
         fname = 'mean_shear_' + self.index + '.png'
+        fpath = os.path.join(plot_dir, fname)
+        if save:
+            fig.savefig(fpath)
+        elif not save:
+            return fig
+
+    def plot_wavelet(self, save=True):
+        fig, ax = plt.subplots()
+
+        ax.set_title('Wavelet analysis (ricker)')
+        ax.set_xlabel('time')
+        ax.set_ylabel('period')
+
+        wavelet_function = signal.wavelets.ricker
+
+        scales = np.arange(1, 400)
+
+        wt = signal.cwt(self.U[20, 20, :], wavelet_function, scales)
+        plt.contourf(wt, 100)
+
+        fname = 'wavelet_' + self.index + '.png'
         fpath = os.path.join(plot_dir, fname)
         if save:
             fig.savefig(fpath)
