@@ -1,5 +1,7 @@
 ### Things to do  ###
 
+- Decouple plot making from data wrangling
+
 - Non dimensionalise everything
 
 - Theory
