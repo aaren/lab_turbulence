@@ -45,7 +45,9 @@ run_lims = {'3b4olxqo': (2200, 4400),
 default_plots = ['hovmoller',
                  'histogram_U',
                  'histogram_W',
-                 'average_velocity',
+                 'mean_velocity',
+                 'mean_velocity_Uf',
+                 'mean_velocity_Wf',
                  'median_velocity',
                  'power',
                  'mean_vorticity',
@@ -92,7 +94,7 @@ class PlotRun(object):
                           'limits':    run_lims[run]}
         self.r = SingleLayer2dRun(**run_kwargs)
         self.u_range = (-10, 5)
-        self.w_range = (-10, 5)
+        self.w_range = (-2, 2)
         # hack, remove the x at the edges
         for d in ('U', 'W', 'T'):
             arr = getattr(self.r, d)
@@ -111,14 +113,48 @@ class PlotRun(object):
         self.Wf = self.reshape_to_current_relative(self.W, self.front_offset, self.T_width)
         self.Tf = self.reshape_to_current_relative(self.T, self.front_offset, self.T_width)
 
-        # gradients
+        ## gradients
         self.dUz, self.dUx, self.dUt = np.gradient(self.U)
         self.dWz, self.dWx, self.dWt = np.gradient(self.W)
         self.dUfz, self.dUfx, self.dUft = np.gradient(self.Uf)
         self.dWfz, self.dWfx, self.dWft = np.gradient(self.Wf)
 
-        # colour levels
-        self.levels = np.linspace(*self.u_range, num=100)
+        ## derived properties
+        # absolute velocity
+        self.uf_abs = np.hypot(self.Uf, self.Wf)
+        # vorticity
+        self.vorticity = self.dWfx - self.dUfz
+        # vertical absolute velocity shear
+        self.vertical_shear = np.hypot(self.dUfz, self.dWfz)
+
+        # colour levels for contour plotting
+        self.levels_u = np.linspace(*self.u_range, num=100)
+        self.levels_w = np.linspace(*self.w_range, num=100)
+        self.levels = self.levels_u
+
+    def mean_f(self, x):
+        """Compute mean over time varying axis of a front relative
+        quantity, x.
+        """
+        # TODO: the axis used in nanmean is different for U and Uf
+        # calcs - change Uf dims to make consistent?
+        return stats.nanmean(x, axis=1)
+
+    def median_f(self, x):
+        """Compute median over time varying axis of a front relative
+        quantity, x.
+        """
+        # TODO: the axis used in nanmean is different for U and Uf
+        # calcs - change Uf dims to make consistent?
+        return stats.nanmedian(x, axis=1)
+
+    def rms_f(self, x):
+        """Compute standard deviation over time varying axis of a
+        front relative quantity, x.
+        """
+        # TODO: the axis used in nanmean is different for U and Uf
+        # calcs - change Uf dims to make consistent?
+        return stats.nanstd(x, axis=1)
 
     def reshape_to_current_relative(self, vel, T0, T1):
         """Take the velocity data and transform it to the current
@@ -134,225 +170,97 @@ class PlotRun(object):
         Uf = np.transpose(U_, (0, 2, 1))
         return Uf
 
-    def plot_hovmoller(self, zi=10, save=True):
-        """Create a hovmoller of the streamwise velocity at the
-        given z index (default 10) and overlay the detected front
-        position vector.
+    def hovmoller(self, ax, quantity, zi=10):
+        ax.set_xlabel('time')
+        ax.set_ylabel('distance')
+        contourf = ax.contourf(quantity[zi, :, :], levels=self.levels)
+        return contourf
 
-        Also plot the front relative hovmoller
-        """
-        fig, axes = plt.subplots(nrows=3)
-
-        ax_avg = axes[0]
-        ax_avg.set_title('Time averaged streamwise velocity')
-        ax_avg.set_xlabel('time')
-        ax_avg.set_ylabel('height')
-
-        Uf_bar = stats.nanmean(self.Uf, axis=1)
-        ax_avg.contourf(Uf_bar, levels=self.levels)
-        ax_avg.axhline(zi, linewidth=2, color='black')
-
-        ax_U = axes[1]
-        ax_U.set_title('Hovmoller of streamwise velocity')
-        ax_U.set_xlabel('time')
-        ax_U.set_ylabel('distance')
-
-        ax_Uf = axes[2]
-        ax_Uf.set_title('Hovmoller of shifted streamwise velocity')
-        ax_Uf.set_xlabel('time')
-        ax_Uf.set_ylabel('distance')
-
-        contourfU = ax_U.contourf(self.U[zi, :, :], levels=self.levels)
-        contourfUf = ax_Uf.contourf(self.Uf[zi, :, :], levels=self.levels)
-
-        x = np.indices((self.U.shape[1],)).squeeze()
-        tf = front_detect(self.U)
-        ax_U.plot(tf(x), x, label='detected front')
-        ax_Uf.axvline(-self.front_offset, label='detected front')
-
-        ax_U.legend()
-        ax_Uf.legend()
-
-        fname = 'hovmoller_U_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-
-        # make space for shared colorbar
-        fig.tight_layout(rect=(0, 0, 0.9, 1))
-        cax = fig.add_axes([0.9, 0.1, 0.03, 0.8])
-        fig.colorbar(contourfU, cax=cax, use_gridspec=True)
-
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
-
-    def plot_histogram_U(self, save=True):
-        U = self.U
-        uf = U.flatten()
-        fig, ax = plt.subplots(nrows=2)
-
-        ax[0].hist(uf, bins=1000, range=self.u_range)
+    def histogram(self, ax, quantity):
+        uf = quantity.flatten()
+        ax.hist(uf, bins=1000, range=self.u_range)
         title = 'Streamwise velocity distribution, run {run}'
-        ax[0].set_title(title.format(run=self.index))
-        ax[0].set_xlabel('Streamwise velocity, pixels')
-        ax[0].set_ylabel('frequency')
-        ax[0].set_yticks([])
+        ax.set_title(title.format(run=self.index))
+        ax.set_xlabel('Streamwise velocity, pixels')
+        ax.set_ylabel('frequency')
+        ax.set_yticks([])
+        return
 
-        Z = np.indices((U.shape[0],)).squeeze()
-        U_bins = np.histogram(U[0], range=self.u_range, bins=1000)[1]
-        histograms = (np.histogram(U[z], range=self.u_range, bins=1000)[0]
-                      for z in xrange(U.shape[0]))
+    def vertical_distribution(self, ax, quantity):
+        # FIXME: this Z should come from self
+        q = quantity
+        Z = np.indices((q.shape[0],)).squeeze()
+        U_bins = np.histogram(q[0], range=self.u_range, bins=1000)[1]
+        histograms = (np.histogram(q[z], range=self.u_range, bins=1000)[0]
+                      for z in xrange(q.shape[0]))
         hist_z = np.dstack(histograms).squeeze()
 
         levels = np.linspace(0, 500, 100)
-        c1 = ax[1].contourf(U_bins[1:], Z, hist_z.T, levels=levels)
-        # fig.colorbar(c1, ax=ax[1], use_gridspec=True)
+        contourf = ax.contourf(U_bins[1:], Z, hist_z.T, levels=levels)
 
-        ax[1].set_title('velocity distribution')
-        ax[1].set_xlabel('Streamwise velocity')
-        ax[1].set_ylabel('z')
+        ax.set_title('distribution function')
+        ax.set_xlabel('quantity')
+        ax.set_ylabel('z')
+        return contourf
 
-        fname = 'histogram_U_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-
-        fig.tight_layout()
-
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
-
-    def plot_histogram_W(self, save=True):
-        U = self.W
-        uf = U.flatten()
-        fig, ax = plt.subplots(nrows=2)
-
-        ax[0].hist(uf, bins=1000, range=self.u_range)
-        title = 'Vertical velocity distribution, run {run}'
-        ax[0].set_title(title.format(run=self.index))
-        ax[0].set_xlabel('Vertical velocity, pixels')
-        ax[0].set_ylabel('frequency')
-        ax[0].set_yticks([])
-
-        Z = np.indices((U.shape[0],)).squeeze()
-        U_bins = np.histogram(U[0], range=self.u_range, bins=1000)[1]
-        histograms = (np.histogram(U[z], range=self.u_range, bins=1000)[0]
-                      for z in xrange(U.shape[0]))
-        hist_z = np.dstack(histograms).squeeze()
-
-        levels = np.linspace(0, 500, 100)
-        c1 = ax[1].contourf(U_bins[1:], Z, hist_z.T, levels=levels)
-        # fig.colorbar(c1, ax=ax[1], use_gridspec=True)
-
-        ax[1].set_title('velocity distribution')
-        ax[1].set_xlabel('vertical velocity')
-        ax[1].set_ylabel('z')
-
-        fname = 'histogram_W_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-
-        fig.tight_layout()
-
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
-
-    def plot_average_velocity(self, save=True):
-        u_mod = np.hypot(self.Uf, self.Wf)
-        u_mod_bar = stats.nanmean(u_mod, axis=1)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+    def mean_velocity(self, ax):
+        u_mod_bar = self.mean_f(self.uf_abs)
         contourf = ax.contourf(u_mod_bar, self.levels)
-        fig.colorbar(contourf)
         ax.set_title(r'Mean speed $\overline{|u|_t}(x, z)$')
         ax.set_xlabel('horizontal')
         ax.set_ylabel('vertical')
-        fname = 'average_velocity_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
+        return contourf
 
-    def plot_median_velocity(self, save=True):
-        u_mod = np.hypot(self.Uf, self.Wf)
-        u_mod_med = stats.nanmedian(u_mod, axis=1)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        contourf = ax.contourf(u_mod_med, self.levels)
-        fig.colorbar(contourf)
+    def mean_velocity_Uf(self, ax):
+        mean_Uf = self.mean_f(self.Uf)
+        contourf = ax.contourf(mean_Uf, self.levels)
+        ax.set_title('Time averaged streamwise velocity')
+        ax.set_xlabel('time after front passage')
+        ax.set_ylabel('height')
+        return contourf
+
+    def mean_velocity_Wf(self, ax):
+        mean_Wf = self.mean_f(self.Wf)
+        contourf = ax.contourf(mean_Wf, self.levels_w)
+        ax.set_title('Time averaged vertical velocity')
+        ax.set_xlabel('time after front passage')
+        ax.set_ylabel('height')
+        return contourf
+
+    def median_velocity(self, ax):
+        median_u = self.median_f(self.uf_abs)
+        contourf = ax.contourf(median_u, self.levels)
         ax.set_title('Median speed')
         ax.set_xlabel('horizontal')
         ax.set_ylabel('vertical')
-        fname = 'median_velocity_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
+        return contourf
 
-    def plot_std_velocity(self, save=True):
-        u_mod = np.hypot(self.Uf, self.Wf)
-        u_mod_med = stats.nanstd(u_mod, axis=1)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        contourf = ax.contourf(u_mod_med, levels=np.linspace(0, 2, 100))
-        fig.colorbar(contourf)
+    def std_velocity(self, ax):
+        std_u = self.rms_f(self.uf_abs)
+        contourf = ax.contourf(std_u, levels=np.linspace(0, 2, 100))
         ax.set_title('rms absolute velocity')
         ax.set_xlabel('horizontal')
         ax.set_ylabel('vertical')
-        fname = 'std_velocity_abs' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
+        return contourf
 
-    def plot_std_velocity_U(self, save=True):
-        u_mod_med = stats.nanstd(self.Uf, axis=1)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        contourf = ax.contourf(u_mod_med, levels=np.linspace(0, 2, 100))
-        fig.colorbar(contourf)
+    def std_velocity_U(self, ax):
+        std_Uf = self.rms_f(self.Uf)
+        contourf = ax.contourf(std_Uf, levels=np.linspace(0, 2, 100))
         ax.set_title('rms streamwise velocity')
         ax.set_xlabel('horizontal')
         ax.set_ylabel('vertical')
-        fname = 'std_velocity_U' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
+        return contourf
 
-    def plot_std_velocity_W(self, save=True):
-        u_mod_med = stats.nanstd(self.Wf, axis=1)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        contourf = ax.contourf(u_mod_med, levels=np.linspace(0, 1.5, 100))
-        fig.colorbar(contourf)
+    def std_velocity_W(self, ax):
+        std_Wf = self.rms_f(self.Wf)
+        contourf = ax.contourf(std_Wf, levels=np.linspace(0, 2, 100))
         ax.set_title('rms vertical velocity')
         ax.set_xlabel('horizontal')
         ax.set_ylabel('vertical')
-        fname = 'std_velocity_W' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
+        return contourf
 
-    def plot_power(self, save=True):
-        # fourier transform over the time axis
-        fig, axes = plt.subplots(nrows=3)
-        ax_location, ax_power, ax_fft = axes
-        space_mean = stats.nanmean(self.Uf, axis=1)
-        ax_location.contourf(space_mean, self.levels)
-        ax_location.set_title('Overview')
-
-        ax_fft.set_title('domain fft')
-
+    def power_spectrum(self, ax):
         times = self.Tf
-
         # limit to bottom half of domain
         U = self.Uf
         half = U.shape[1] / 2
@@ -368,16 +276,6 @@ class PlotRun(object):
         # dimension the same as that of the x axis
         # as the time dimension is the last one, we can flatten the
         # 3d array and resize the frequency array to match
-
-        # compute average fft over domain
-        domain_fft = stats.nanmean(stats.nanmean(fft_U))
-        ax_fft.plot(freqs, domain_fft.real, 'k.', label='Re')
-        ax_fft.plot(freqs, domain_fft.imag, 'r.', label='Im')
-        ax_fft.set_yscale('log')
-        ax_fft.set_ylim(1E-2, 1E3)
-        ax_fft.set_xlim(0, 50)
-        ax_fft.set_xscale('log')
-        ax_fft.legend()
 
         f_ps = power_spectrum.flatten()
         f_freqs = np.resize(freqs, f_ps.shape)
@@ -397,8 +295,8 @@ class PlotRun(object):
         # pcolormesh
         mhh = np.ma.masked_where(hh < thresh, hh)
 
-        ax_power.pcolormesh(X, Y, mhh.T, cmap='jet',
-                            norm=mpl.colors.LogNorm())
+        pcolor = ax.pcolormesh(X, Y, mhh.T, cmap='jet',
+                               norm=mpl.colors.LogNorm())
 
         # scatter plot for low density?
         # find what the points are
@@ -411,87 +309,204 @@ class PlotRun(object):
         x0, x1 = 3E-1, 1E1  # where in x should we go from and to? (power)
         x53 = np.linspace(x0, x1)
         y53 = x53 ** (-5 / 3) * y0
-        ax_power.plot(x53, y53, 'k', linewidth=2)
-        ax_power.text(x0, y0, '-5/3')
+        ax.plot(x53, y53, 'k', linewidth=2)
+        ax.text(x0, y0, '-5/3')
 
-        ax_power.set_title('Power Spectrum')
-        ax_power.set_xscale('log')
-        ax_power.set_yscale('log')
-        ax_power.set_xlim(xlo, xhi)
-        ax_power.set_ylim(ylo, yhi)
-        ax_power.set_xlabel('Frequency (Hz)')
-        ax_power.set_ylabel('Power')
+        ax.set_title('Power Spectrum')
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_xlim(xlo, xhi)
+        ax.set_ylim(ylo, yhi)
+        ax.set_xlabel('Frequency (Hz)')
+        ax.set_ylabel('Power')
 
-        fig.tight_layout()
+        return pcolor
 
-        fname = 'power_spectrum_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        # TODO: can a decorator replace this functionality?
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
+    def fft_U(self, ax):
+        # limit to bottom half of domain
+        ax.set_title('domain fft')
+        U = self.Uf
+        half = U.shape[1] / 2
+        U = U[:, :half, :]
+        times = self.Tf
+        # compute fft over time
+        fft_U = np.fft.fft(U, axis=2)
+        freqs = np.fft.fftfreq(times.shape[-1], d=0.01)
 
-    def plot_mean_vorticity(self, save=True):
-        fig, ax = plt.subplots()
+        # compute average fft over domain
+        domain_fft = stats.nanmean(stats.nanmean(fft_U))
+        ax.plot(freqs, domain_fft.real, 'k.', label='Re')
+        ax.plot(freqs, domain_fft.imag, 'r.', label='Im')
+        ax.set_yscale('log')
+        ax.set_ylim(1E-2, 1E3)
+        ax.set_xlim(0, 50)
+        ax.set_xscale('log')
+        ax.legend()
 
-        vorticity = self.dWfx - self.dUfz
-        # TODO: the axis used in nanmean is different for U and Uf
-        # calcs - change Uf dims to make consistent?
-        mean_vorticity = stats.nanmean(vorticity, axis=1)
+        return
 
+    def mean_vorticity(self, ax):
+        mean_vorticity = self.mean_f(self.vorticity)
         contourf = ax.contourf(mean_vorticity, 100)
         ax.set_title('Mean vorticity')
+        return contourf
 
-        fig.colorbar(contourf)
-
-        fname = 'mean_vorticity_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
-
-    def plot_mean_shear(self, save=True):
-        fig, ax = plt.subplots()
-
-        shear = np.hypot(self.dUfz, self.dWfz)
-        # TODO: the axis used in nanmean is different for U and Uf
-        # calcs - change Uf dims to make consistent?
-        mean_shear = stats.nanmean(shear, axis=1)
-
+    def mean_shear(self, ax):
+        mean_shear = self.mean_f(self.vertical_shear)
         contourf = ax.contourf(mean_shear, 100)
         ax.set_title('Mean vertical shear')
+        return contourf
 
-        fig.colorbar(contourf)
-
-        fname = 'mean_shear_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
-
-    def plot_wavelet(self, save=True):
-        fig, ax = plt.subplots()
-
+    def wavelet(self, ax):
         ax.set_title('Wavelet analysis (ricker)')
         ax.set_xlabel('time')
         ax.set_ylabel('period')
 
         wavelet_function = signal.wavelets.ricker
 
-        scales = np.arange(1, 400)
+        scales = np.arange(1, 1500)
 
         wt = signal.cwt(self.U[20, 20, :], wavelet_function, scales)
-        plt.contourf(wt, 100)
+        contourf = ax.contourf(wt, 100)
+        return contourf
 
-        fname = 'wavelet_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
+    def plot_figure(self, quantity, colorbar=True):
+        fig, ax = plt.subplots()
+        special_plots = ['power', 'wavelet', 'hovmoller', 'histogram_U',
+                         'histogram_W', 'autocorrelation']
+        if quantity in special_plots:
+            fig = getattr(self, 'plot_' + quantity)()
+        else:
+            plot_func = getattr(self, quantity)(ax)
+            if colorbar:
+                fig.colorbar(plot_func)
+        return fig
+
+    def plot_hovmoller(self, zi=10):
+        """Create a hovmoller of the streamwise velocity at the
+        given z index (default 10) and overlay the detected front
+        position vector.
+
+        Also plot the front relative hovmoller
+        """
+        fig, axes = plt.subplots(nrows=3)
+        ax_avg, ax_U, ax_Uf = axes
+
+        self.mean_velocity_Uf(ax_avg)
+        ax_avg.axhline(zi, linewidth=2, color='black')
+
+        ax_U.set_title('Hovmoller of streamwise velocity')
+        hovmoller_U = self.hovmoller(ax_U, quantity=self.U)
+        # over plot line of detected front passage
+        # FIXME: this x should be from self
+        x = np.indices((self.U.shape[1],)).squeeze()
+        tf = self.tf
+        ax_U.plot(tf(x), x, label='detected front')
+
+        ax_U.set_title('Hovmoller of shifted streamwise velocity')
+        self.hovmoller(ax_Uf, quantity=self.Uf)
+        # over plot line of detected front passage
+        ax_Uf.axvline(-self.front_offset, label='detected front')
+
+        ax_U.legend()
+        ax_Uf.legend()
+
+        # make space for shared colorbar
+        fig.tight_layout(rect=(0, 0, 0.9, 1))
+        cax = fig.add_axes([0.9, 0.1, 0.03, 0.8])
+        fig.colorbar(hovmoller_U, cax=cax, use_gridspec=True)
+
+        return fig
+
+    def plot_histogram_U(self):
+        fig, axes = plt.subplots(nrows=2)
+        ax_all_domain_dist, ax_vertical_dist = axes
+
+        self.histogram(ax_all_domain_dist, self.U)
+        self.vertical_distribution(ax_vertical_dist, self.U)
+
+        title = 'Streamwise velocity distribution, run {run}'
+        ax_all_domain_dist.set_title(title.format(run=self.index))
+        ax_all_domain_dist.set_xlabel('Streamwise velocity, pixels')
+
+        ax_vertical_dist.set_title('streamwise velocity distribution')
+        ax_vertical_dist.set_xlabel('streamwise velocity')
+
+        fig.tight_layout()
+
+        return fig
+
+    def plot_histogram_W(self):
+        fig, axes = plt.subplots(nrows=2)
+        ax_all_domain_dist, ax_vertical_dist = axes
+
+        self.histogram(ax_all_domain_dist, self.W)
+        self.vertical_distribution(ax_vertical_dist, self.W)
+
+        title = 'Vertical velocity distribution, run {run}'
+        ax_all_domain_dist.set_title(title.format(run=self.index))
+        ax_all_domain_dist.set_xlabel('Vertical velocity, pixels')
+
+        ax_vertical_dist.set_title('vertical velocity distribution')
+        ax_vertical_dist.set_xlabel('vertical velocity')
+
+        fig.tight_layout()
+
+        return fig
+
+    def plot_autocorrelation(self):
+        """Plot the autocorrelation as a function of height of
+        the mean front relative frame.
+        """
+        fig, ax = plt.subplots()
+        U = stats.nanmean(self.Uf, axis=1)
+        # correlate two 1d arrays
+        # np.correlate(U, U, mode='full')[len(U) - 1:]
+        # but we want to autocorrelate a 2d array over a given
+        # axis
+        N = U.shape[1]
+        pad_N = N * 2 - 1
+        s = np.fft.fft(U, n=pad_N, axis=1)
+        acf = np.real(np.fft.ifft(s * s.conjugate(), axis=1))[:, :N]
+        # normalisation
+        acf0 = np.expand_dims(acf[:, 0], 1)
+        acf = acf / acf0
+
+        fig, ax = plt.subplots(nrows=2)
+        c0 = ax[0].contourf(U, self.levels)
+        c1 = ax[1].contourf(acf, 100)
+
+        fig.colorbar(c0, ax=ax[0], use_gridspec=True)
+        fig.colorbar(c1, ax=ax[1], use_gridspec=True)
+
+        ax[0].set_title(r'$\overline{u_x}(z, t)$')
+        ax[0].set_xlabel('time')
+        ax[0].set_ylabel('z')
+
+        ax[1].set_title('autocorrelation')
+        ax[1].set_xlabel('lag')
+        ax[1].set_ylabel('z')
+
+        fig.tight_layout()
+
+        return fig
+
+    def plot_power(self):
+        # fourier transform over the time axis
+        fig, axes = plt.subplots(nrows=3)
+        ax_location, ax_power, ax_fft = axes
+
+        self.mean_velocity_Uf(ax_location)
+        self.power_spectrum(ax_power)
+        self.fft_U(ax_fft)
+
+        fig.tight_layout()
+        return fig
+
+    def plot_wavelet(self):
+        fig, ax = plt.subplots()
+        self.wavelet(ax)
+        return fig
 
     def plot_time_slices(self):
         """If we take a vertical profile at a given horizontal
@@ -535,47 +550,6 @@ class PlotRun(object):
                    for x in X]
         util.parallel_process(plot_vertical_transect, arglist)
 
-    def plot_autocorrelation(self, save=True):
-        """Plot the autocorrelation as a function of height of
-        the mean front relative frame.
-        """
-        U = stats.nanmean(self.Uf, axis=1)
-        # correlate two 1d arrays
-        # np.correlate(U, U, mode='full')[len(U) - 1:]
-        # but we want to autocorrelate a 2d array over a given
-        # axis
-        N = U.shape[1]
-        pad_N = N * 2 - 1
-        s = np.fft.fft(U, n=pad_N, axis=1)
-        acf = np.real(np.fft.ifft(s * s.conjugate(), axis=1))[:, :N]
-        # normalisation
-        acf0 = np.expand_dims(acf[:, 0], 1)
-        acf = acf / acf0
-
-        fig, ax = plt.subplots(nrows=2)
-        c0 = ax[0].contourf(U, self.levels)
-        c1 = ax[1].contourf(acf, 100)
-
-        fig.colorbar(c0, ax=ax[0], use_gridspec=True)
-        fig.colorbar(c1, ax=ax[1], use_gridspec=True)
-
-        ax[0].set_title(r'$\overline{u_x}(z, t)$')
-        ax[0].set_xlabel('time')
-        ax[0].set_ylabel('z')
-
-        ax[1].set_title('autocorrelation')
-        ax[1].set_xlabel('lag')
-        ax[1].set_ylabel('z')
-
-        fig.tight_layout()
-
-        fname = 'autocorrelation_' + self.index + '.png'
-        fpath = os.path.join(plot_dir, fname)
-        if save:
-            fig.savefig(fpath)
-        elif not save:
-            return fig
-
     def time_slice_path(self, t):
         fname = 'time_slices/time_slice_{r}_{t:0>4d}.png'
         fpath = os.path.join(plot_dir, fname.format(r=self.index, t=t))
@@ -586,11 +560,30 @@ class PlotRun(object):
         fpath = os.path.join(plot_dir, fname.format(r=self.index, x=x))
         return fpath
 
-    def main(self, plots=default_plots):
+    def main(self, plots=default_plots, funcs=None):
+        """plots is a list of plotting functions to execute and save.
+
+        funcs is a list of plotting functions to execute. This is used
+        for multiprocessing plotting functions that don't return a single
+        figure.
+        """
         for plot in plots:
+            if plot == 'no_plot':
+                break
             print "plotting", plot
-            plot_func = getattr(self, 'plot_' + plot)
-            plot_func()
+
+            fig = self.plot_figure(plot)
+
+            fformat = '{plot}_{index}.{ext}'
+            fname = fformat.format(plot=plot, index=self.index, ext='png')
+            fpath = os.path.join(plot_dir, fname)
+            fig.savefig(fpath)
+
+        if funcs:
+            for func in funcs:
+                print "multiprocessing", func
+                f = getattr(self, 'plot_' + func)
+                f()
 
 
 def plot_time_slice(args):
@@ -690,6 +683,16 @@ if __name__ == '__main__':
                         nargs='*',
                         type=str,
                         default=default_plots)
+    parser.add_argument("--vertical_transects",
+                        help="compute vertical transects (multiprocessing)",
+                        action='append_const',
+                        const='vertical_transects',
+                        dest='funcs')
+    parser.add_argument("--time_slices",
+                        help="compute time slices (multiprocessing)",
+                        action='append_const',
+                        const='time_slices',
+                        dest='funcs')
     # TODO: add argument for reload without plotting anything
     parser.add_argument("--reload",
                         help="force reloading cache, "
@@ -706,12 +709,12 @@ if __name__ == '__main__':
         # calling PlotRun loads everything anyway so can
         # call save here
         r.r.save()
-        r.main(plots=args.plots)
+        r.main(plots=args.plots, funcs=args.funcs)
 
     elif args.cache_test:
         r = cache_test_run(index=test_run_index)
         # calling PlotRun loads everything anyway so can
-        r.main(plots=args.plots)
+        r.main(plots=args.plots, funcs=args.funcs)
 
     else:
         for run in runs:
@@ -724,4 +727,4 @@ if __name__ == '__main__':
                           'cache_reload': args.reload,
                           'limits':       run_lims[run]}
             pr = PlotRun(run, run_kwargs)
-            pr.main(plots=args.plots)
+            pr.main(plots=args.plots, funcs=args.funcs)
