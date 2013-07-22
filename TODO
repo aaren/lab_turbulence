@@ -6,6 +6,8 @@
     - turbulent shear layer at top
     - compare to log flow at bottom
 
+- Move from pickle to .npy
+
 Following 19/7/13 meeting:
 
 - Power Spectra
