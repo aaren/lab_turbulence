@@ -19,10 +19,12 @@ class SingleLayerFrame(object):
     """Each SingleLayerRun is comprised of a series of frames.
     This class represents one of the frames.
     """
-    def __init__(self, fname, stereo=False, quiver_format='quiver_{f}.png'):
+    def __init__(self, fname, columns, quiver_format='quiver_{f}.png'):
         """Initialise a frame object.
 
         Inputs: fname - filename of a piv velocity text file
+                columns - {k: v} where k is the name to give the
+                          data coming from the column given by v
                 keys - a dictionary of {k: v} where k is a header
                        from the data file and v is the column it
                        corresponds to.
@@ -32,18 +34,7 @@ class SingleLayerFrame(object):
         self.quiver_format = quiver_format
         self.content_start = self.content_line + 2
         self.header_start = self.header_line + 1
-        if stereo is False:
-            self.columns = {'x': 0,
-                            'z': 1,
-                            'u': 6,
-                            'w': 7}
-
-        if stereo is True:
-            self.columns = {'x': 2,
-                            'z': 3,
-                            'u': 4,
-                            'v': 6,
-                            'w': 5}
+        self.columns = columns
         for k in self.columns:
             setattr(self, k, self.data[k])
         # array of times to match dimension of other data
@@ -157,7 +148,7 @@ def instantiateFrame(args):
     fname = args['fname']
     queue = args['queue']
     pbar = args['pbar']
-    frame = SingleLayerFrame(fname=fname, stereo=args['stereo'])
+    frame = SingleLayerFrame(fname=fname, columns=args['columns'])
     pbar.update()
     queue.put(frame)
     return
@@ -172,7 +163,7 @@ def gen_quiver_plot(args):
     queue = args['queue']
     pbar = args['pbar']
     quiver_dir = args['quiver_dir']
-    frame = SingleLayerFrame(fname, stereo=args['stereo'])
+    frame = SingleLayerFrame(fname, columns=args['columns'])
     frame.make_quiver_plot(quiver_dir=quiver_dir)
     pbar.update()
     queue.put(1)
@@ -212,6 +203,19 @@ class SingleLayerRun(object):
         self.limits = limits
         self.x_lims = x_lims
         self.stereo = stereo
+
+        if stereo is False:
+            self.columns = {'x': 0,
+                            'z': 1,
+                            'u': 6,
+                            'w': 7}
+
+        elif stereo is True:
+            self.columns = {'x': 2,
+                            'z': 3,
+                            'u': 4,
+                            'v': 6,
+                            'w': 5}
 
         # default cache_dir
         if not cache_dir:
@@ -312,7 +316,7 @@ class SingleLayerRun(object):
         pbar.start()
 
         for i, fname in enumerate(self.files):
-            frame = SingleLayerFrame(fname=fname, stereo=self.stereo)
+            frame = SingleLayerFrame(fname=fname, columns=self.columns)
             frames.append(frame)
             pbar.update(i)
 
@@ -322,7 +326,7 @@ class SingleLayerRun(object):
     def get_frames_parallel(self, processors=20):
         """Get the frames with multiprocessing.
         """
-        args = [dict(fname=f, stereo=self.stereo) for f in self.files]
+        args = [dict(fname=f, columns=self.columns) for f in self.files]
         frames = parallel_process(instantiateFrame, args, processors)
         if type(frames) is not list:
             raise UserWarning('frames is not list!')
@@ -337,7 +341,7 @@ class SingleLayerRun(object):
         print("Generating {n} quiver plots".format(n=len(self.files)))
         makedirs_p(self.quiver_dir)
         quiver_kwargs = {'quiver_dir': self.quiver_dir,
-                         'stereo':     self.stereo}
+                         'columns':    self.columns}
         arglist = [dict(quiver_kwargs, fname=f) for f in self.files]
         parallel_process(gen_quiver_plot, arglist)
 

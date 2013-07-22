@@ -24,6 +24,17 @@ run = SingleLayer2dRun(**run_kwargs)
 stereo_run_kwargs = dict(data_dir=w_dir, index='3eodh6wx', rex='.00001*')
 stereo_run = SingleLayer3dRun(**stereo_run_kwargs)
 
+columns_2d = {'x': 0,
+              'z': 1,
+              'u': 6,
+              'w': 7}
+
+columns_3d = {'x': 2,
+              'z': 3,
+              'u': 4,
+              'v': 6,
+              'w': 5}
+
 
 def test_quivers():
     """Make a load of quiver plots with multiprocessing (default)
@@ -40,7 +51,7 @@ def test_frames():
     """Generates an array of horizontal velocities from the test data."""
     U = run.U
     assert_equal(U.shape[-1], run.nfiles)
-    frame = SingleLayerFrame(fname=run.files[0])
+    frame = SingleLayerFrame(fname=run.files[0], columns=columns_2d)
     npt.assert_array_equal(U[:, :, 0], frame.u)
 
 
@@ -49,7 +60,7 @@ def test_stereo_frames():
     for vel in ('U', 'V', 'W'):
         U = getattr(stereo_run, vel)
         assert_equal(U.shape[-1], stereo_run.nfiles)
-        frame = SingleLayerFrame(fname=stereo_run.files[0], stereo=True)
+        frame = SingleLayerFrame(fname=stereo_run.files[0], columns=columns_3d)
         assert_equal(frame.fname, stereo_run.files[0])
         u = getattr(frame, vel.lower())
         npt.assert_array_equal(U[:, :, 0], u)

@@ -2,13 +2,26 @@ from nose.tools import *
 
 from ..gc_turbulence.turbulence import SingleLayerFrame
 
+
+columns_2d = {'x': 0,
+              'z': 1,
+              'u': 6,
+              'w': 7}
+
+columns_3d = {'x': 2,
+              'z': 3,
+              'u': 4,
+              'v': 6,
+              'w': 5}
+
+
 csv_file = 'tests/ex_data/data/img.3b4olxqo.000500.csv'
 txt_file = 'tests/ex_data/data/Export.3atnh4dp.000500.txt'
 stereo_file = 'tests/ex_data/data/stereo_test.3eodh6wx.000011.txt'
 
-csv_frame = SingleLayerFrame(fname=csv_file)
-txt_frame = SingleLayerFrame(fname=txt_file)
-stereo_frame = SingleLayerFrame(fname=stereo_file, stereo=True)
+csv_frame = SingleLayerFrame(fname=csv_file, columns=columns_2d)
+txt_frame = SingleLayerFrame(fname=txt_file, columns=columns_2d)
+stereo_frame = SingleLayerFrame(fname=stereo_file, columns=columns_3d)
 
 
 def test_find_line_csv():
