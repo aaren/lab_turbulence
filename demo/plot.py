@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 import sys
 sys.path.append(os.path.join(os.environ['HOME'], 'code'))
-from gc_turbulence.gc_turbulence.turbulence import SingleLayer2dRun
+from gc_turbulence.gc_turbulence.turbulence import SingleLayerRun
 import gc_turbulence.gc_turbulence.util as util
 
 
@@ -92,7 +92,7 @@ class PlotRun(object):
                           'parallel':  True,
                           'caching':   True,
                           'limits':    run_lims[run]}
-        self.r = SingleLayer2dRun(**run_kwargs)
+        self.r = SingleLayerRun(**run_kwargs)
         self.u_range = (-10, 5)
         self.w_range = (-2, 2)
         # hack, remove the x at the edges

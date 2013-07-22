@@ -5,8 +5,7 @@ import numpy.testing as npt
 from scipy.misc import imread
 
 from ..gc_turbulence.turbulence import SingleLayerFrame
-from ..gc_turbulence.turbulence import SingleLayer2dRun
-from ..gc_turbulence.turbulence import SingleLayer3dRun
+from ..gc_turbulence.turbulence import SingleLayerRun
 
 
 # delete all cache
@@ -20,9 +19,9 @@ baseline_quiver = 'tests/ex_data/baseline/quiver/quiver_000500.png'
 w_dir = 'tests/ex_data'
 
 run_kwargs = dict(data_dir=w_dir, index='3b4olxqo', rex='.000*')
-run = SingleLayer2dRun(**run_kwargs)
-stereo_run_kwargs = dict(data_dir=w_dir, index='3eodh6wx', rex='.00001*')
-stereo_run = SingleLayer3dRun(**stereo_run_kwargs)
+run = SingleLayerRun(**run_kwargs)
+stereo_run_kwargs = dict(data_dir=w_dir, index='3eodh6wx', rex='.00001*', stereo=True)
+stereo_run = SingleLayerRun(**stereo_run_kwargs)
 
 columns_2d = {'x': 0,
               'z': 1,
@@ -66,90 +65,38 @@ def test_stereo_frames():
         npt.assert_array_equal(U[:, :, 0], u)
 
 
-def test_pickle_run():
+def test_save_run():
     """Write a run object to disk and load it up again."""
     # instantiate run, forcing reload (i.e. not use pickled data)
-    run = SingleLayer2dRun(cache_dir='tests/ex_data/cache',
-                           caching=False,
-                           **run_kwargs)
-    # save to pickle file
-    run.save()
-    # U should not be loaded when we load from the pickle file
-    run2 = SingleLayer2dRun(cache_dir='tests/ex_data/cache',
-                            caching=True,
-                            **run_kwargs)
-    frames_attr_name = '_lazy_frames'
-    assert(not(hasattr(run2, frames_attr_name)))
+    run = SingleLayerRun(cache_dir='tests/ex_data/cache',
+                         caching=False,
+                         **run_kwargs)
 
-    # load U and save to pickle file
-    U = run.U
+    # save to npz file
     run.save()
-    # U should now be loaded
-    run2 = SingleLayer2dRun(cache_dir='tests/ex_data/cache',
-                            caching=True,
-                            **run_kwargs)
-    assert(hasattr(run2, frames_attr_name))
+    # U should be loaded when we load from the npz file
+    run2 = SingleLayerRun(cache_dir='tests/ex_data/cache',
+                          caching=True,
+                          **run_kwargs)
+    U_attr_name = 'U'
+    assert(hasattr(run2, U_attr_name))
 
     # compare the run and the saved copy
-    U2 = run2.U
-    npt.assert_array_equal(U, U2)
+    npt.assert_array_equal(run.U, run2.U)
 
     # delete the cache file
     os.remove(run2.cache_path)
-    # should get UserWarning
-    assert_raises(UserWarning, SingleLayer2dRun,
-                               cache_dir='tests/ex_data/cache',
-                               caching=True,
-                               **run_kwargs)
+    # should get UserWarning when try and load with caching enabled
+    assert_raises(UserWarning,
+                  SingleLayerRun,
+                  cache_dir='tests/ex_data/cache',
+                  caching=True,
+                  **run_kwargs)
 
 
 def test_pickle_run_autosave():
     """When frames are loaded, run should save automatically."""
-    frames_attr_name = '_lazy_frames'
-
-    # create a fresh run, no frames loaded (default)
-    run = SingleLayer2dRun(cache_dir='tests/ex_data/cache',
-                           caching=False,
-                           **run_kwargs)
-    # overwrite cache file with no frames
-    run.save()
-    # reload False and cache file will load at instantiate
-    cache_run = SingleLayer2dRun(cache_dir='tests/ex_data/cache',
-                                 caching=True,
-                                 **run_kwargs)
-    # check no frames in both runs
-    assert(not(hasattr(run, frames_attr_name)))
-    assert(not(hasattr(cache_run, frames_attr_name)))
-
-    # this should not overwrite cache file with frames as caching
-    # disabled
-    run.U
-    cache_run.load()
-    assert(not(hasattr(cache_run, frames_attr_name)))
-    # forcing the save will write out to cache file
-    run.save()
-    cache_run.load()
-    assert(hasattr(cache_run, frames_attr_name))
-
-    # turn on caching
-    run.toggle_cache(True)
-    assert(run.caching)
-    run.U
-    # run should now have lazy_frames
-    assert(hasattr(run, frames_attr_name))
-    # load the cache file and check for frames
-    cache_run.load()
-    assert(hasattr(cache_run, frames_attr_name))
-
-    # switching on cache_reload should delete the cache file on
-    # instantiation
-    assert(os.path.exists(run.cache_path))
-    cache_run = SingleLayer2dRun(cache_dir='tests/ex_data/cache',
-                                 caching=True,
-                                 cache_reload=True,
-                                 **run_kwargs)
-    assert(not(os.path.exists(run.cache_path)))
-
+    #TODO: write me!
 
 def test_reload():
     run.reload()
