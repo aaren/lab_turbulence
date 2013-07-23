@@ -174,6 +174,10 @@ class PlotRun(object):
         U_ = np.dstack(vel[:, x, int(tf(x)) + T0:int(tf(x)) + T1] for x in X)
         # reshape this to same dimensions as before
         Uf = np.transpose(U_, (0, 2, 1))
+        # TODO: does axis 2 of Uf need to be reversed?
+        # reverse axis so that time axis progresses as time in the
+        # evolution of the front
+        # Uf = Uf[:,:,::-1]
         return Uf
 
     def hovmoller(self, ax, quantity, zi=10):
