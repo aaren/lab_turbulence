@@ -21,8 +21,6 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-import sys
-sys.path.append(os.path.join(os.environ['HOME'], 'code'))
 from gc_turbulence.gc_turbulence.turbulence import SingleLayerRun
 import gc_turbulence.gc_turbulence.util as util
 
