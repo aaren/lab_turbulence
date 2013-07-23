@@ -117,6 +117,14 @@ class PlotRun(object):
         self.dUfz, self.dUfx, self.dUft = np.gradient(self.Uf)
         self.dWfz, self.dWfx, self.dWft = np.gradient(self.Wf)
 
+        ## reynolds decomposition, u = u_ + u'
+        # mean_flow
+        self.Uf_ = self.mean_f(self.Uf)
+        self.Wf_ = self.mean_f(self.Wf)
+        # perturbation (zero mean)
+        self.Ufp = self.Uf - np.expand_dims(self.Uf_, 1)
+        self.Wfp = self.Wf - np.expand_dims(self.Wf_, 1)
+
         ## derived properties
         # absolute velocity
         self.uf_abs = np.hypot(self.Uf, self.Wf)
