@@ -677,7 +677,8 @@ if __name__ == '__main__':
                         nargs='?',
                         const=test_run_index)
     plot_help = ("List of plots to make. Valid names are any of "
-                 "{plots}. Default is to plot everything.")
+                 "{plots}. Default is to plot everything. Use 'no_plot' "
+                 "to plot nothing.")
     parser.add_argument('plots',
                         help=plot_help.format(plots=default_plots),
                         nargs='*',
@@ -695,8 +696,10 @@ if __name__ == '__main__':
                         dest='funcs')
     # TODO: add argument for reload without plotting anything
     parser.add_argument("--reload",
-                        help="force reloading cache, "
-                             "n.b. deletes old cache file",
+                        help="force reloading cache, n.b. deletes "
+                             "old cache file. To reload cache without "
+                             "plotting anything, give 'no_plot' as plot "
+                             "argument",
                         action='store_true')
     args = parser.parse_args()
 
