@@ -241,8 +241,9 @@ class SingleLayerRun(object):
         # if caching enabled and the cache file exists and we are
         # not reloading, load the cache file
         if caching and cache_exists:
-            print "loading from cache..."
+            print "loading from cache...",
             self.init_load_from_cache()
+            print "loaded"
         elif caching and not cache_exists and not cache_reload:
             raise UserWarning("No cache file!")
         # if not caching, load up from the files
