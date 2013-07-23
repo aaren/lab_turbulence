@@ -709,14 +709,10 @@ if __name__ == '__main__':
 
     if args.test:
         r = test_run(index=test_run_index, reload=args.reload)
-        # calling PlotRun loads everything anyway so can
-        # call save here
-        r.r.save()
         r.main(plots=args.plots, funcs=args.funcs)
 
     elif args.cache_test:
         r = cache_test_run(index=test_run_index)
-        # calling PlotRun loads everything anyway so can
         r.main(plots=args.plots, funcs=args.funcs)
 
     else:
