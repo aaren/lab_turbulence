@@ -390,7 +390,7 @@ class PlotRun(object):
         contourf = ax.contourf(wt, 100)
         return contourf
 
-    def plot_figure(self, quantity, colorbar=True):
+    def plot_figure(self, quantity, colorbar=True, quiver=True):
         fig, ax = plt.subplots()
         special_plots = ['power', 'wavelet', 'hovmoller', 'histogram_U',
                          'histogram_W', 'autocorrelation']
@@ -400,7 +400,35 @@ class PlotRun(object):
             plot_func = getattr(self, quantity)(ax)
             if colorbar:
                 fig.colorbar(plot_func)
+            if quiver:
+                self.overlay_velocities(ax)
         return fig
+
+    def overlay_velocities(self, ax):
+        """Given an axes instance, overlay a quiver plot
+        of Uf_ and Wf_.
+
+        Uses interpolation (scipy.ndimage.zoom) to reduce
+        number of quivers to readable number.
+
+        Will only work sensibly if the thing plotted in ax
+        has same shape as Uf_
+        """
+        zoom_factor = (0.5, 0.05)
+        # TODO: proper x, z
+        Z, X = np.indices(self.Uf_.shape)
+
+        # TODO: are the velocities going at the middle of their grid?
+        # NB. these are not averages. ndi.zoom makes a spline and
+        # then interpolates a value from this
+        # TODO: gaussian filter first?
+        # both are valid approaches
+        Xr = ndi.zoom(X, zoom_factor)
+        Zr = ndi.zoom(Z, zoom_factor)
+        Uf_r = ndi.zoom(self.Uf_, zoom_factor)
+        Wf_r = ndi.zoom(self.Wf_, zoom_factor)
+
+        ax.quiver(Xr, Zr, Uf_r, Wf_r, scale=100)
 
     def plot_hovmoller(self, zi=10):
         """Create a hovmoller of the streamwise velocity at the
