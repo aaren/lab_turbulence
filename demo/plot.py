@@ -52,6 +52,7 @@ default_plots = ['hovmoller',
                  'std_velocity',
                  'std_velocity_U',
                  'std_velocity_W',
+                 'momentum_flux',
                  'mean_shear',
                  'wavelet',
                  'autocorrelation']
@@ -265,6 +266,15 @@ class PlotRun(object):
         std_Wf = self.rms_f(self.Wf)
         contourf = ax.contourf(std_Wf, levels=np.linspace(0, 2, 100))
         ax.set_title('rms vertical velocity')
+        ax.set_xlabel('horizontal')
+        ax.set_ylabel('vertical')
+        return contourf
+
+    def momentum_flux(self, ax):
+        uw = self.Ufp * self.Wfp
+        uw_ = np.abs(r.mean_f(uw))
+        contourf = ax.contourf(uw_, 100)
+        ax.set_title('momentum flux')
         ax.set_xlabel('horizontal')
         ax.set_ylabel('vertical')
         return contourf
