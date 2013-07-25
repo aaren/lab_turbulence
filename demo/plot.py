@@ -21,6 +21,8 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
+import modred as mr
+
 from gc_turbulence.gc_turbulence.turbulence import SingleLayerRun
 import gc_turbulence.gc_turbulence.util as util
 
@@ -393,7 +395,7 @@ class PlotRun(object):
     def plot_figure(self, quantity, colorbar=True, quiver=True):
         fig, ax = plt.subplots()
         special_plots = ['power', 'wavelet', 'hovmoller', 'histogram_U',
-                         'histogram_W', 'autocorrelation']
+                         'histogram_W', 'autocorrelation', 'dmd']
         if quantity in special_plots:
             fig = getattr(self, 'plot_' + quantity)()
         else:
@@ -608,6 +610,50 @@ class PlotRun(object):
         fpath = os.path.join(plot_dir, fname.format(r=self.index, x=x))
         return fpath
 
+    def plot_dmd(self):
+        """Dynamic mode decomposition, using Uf as the series of vectors."""
+        n_modes = 10
+        U = self.Uf
+        # put the decomposition axis last
+        UT = U.transpose(0, 2, 1)
+        # create the matrix of snapshots by flattening the non
+        # decomp axes so we have a 2d array where we index the
+        # decomp axis like snapshots[:,i]
+        snapshots = UT.reshape((-1, UT.shape[-1]))
+
+        # remove nans
+        # TODO: remove nans by interpolation earlier on
+        snapshots[np.where(np.isnan(snapshots))] = 0
+
+        modes, ritz_values, norms = mr.compute_DMD_matrices_snaps_method(snapshots, range(n_modes))
+
+        # as array, reshape to data dims
+        reshaped_modes = modes.A.T.reshape((-1,) + UT.shape[:-1])
+
+        fig, ax = plt.subplots(nrows=3)
+        c0 = self.mean_velocity_Uf(ax[0])
+
+        ax[1].set_title('First mode of DMD')
+        ax[1].set_xlabel('time after front passage')
+        ax[1].set_ylabel('height')
+        c1 = ax[1].contourf(reshaped_modes[0], 100)
+
+        ax[2].set_title('Second mode of DMD')
+        ax[2].set_xlabel('time after front passage')
+        ax[2].set_ylabel('height')
+        # TODO: why does reshaped_modes seem to have a list of
+        # duplicates?
+        # Seems to be complex conjugates - why is this??
+        c2 = ax[2].contourf(reshaped_modes[2], 100, levels=c1.levels)
+
+        fig.colorbar(c0, ax=ax[0], use_gridspec=True)
+        fig.colorbar(c1, ax=ax[1], use_gridspec=True)
+        fig.colorbar(c2, ax=ax[2], use_gridspec=True)
+
+        fig.tight_layout()
+
+        return fig
+
     def main(self, plots=default_plots, funcs=None):
         """plots is a list of plotting functions to execute and save.
 
@@ -746,6 +792,11 @@ if __name__ == '__main__':
                         help="compute time slices (multiprocessing)",
                         action='append_const',
                         const='time_slices',
+                        dest='funcs')
+    parser.add_argument("--dmd",
+                        help="dynamic mode decomposition",
+                        action='append_const',
+                        const='dmd',
                         dest='funcs')
     # TODO: add argument for reload without plotting anything
     parser.add_argument("--reload",
