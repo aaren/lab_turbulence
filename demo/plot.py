@@ -732,6 +732,11 @@ if __name__ == '__main__':
                         nargs='*',
                         type=str,
                         default=default_plots)
+    parser.add_argument("--run",
+                        help="specify runs to process",
+                        nargs='*',
+                        dest='run',
+                        default=runs)
     parser.add_argument("--vertical_transects",
                         help="compute vertical transects (multiprocessing)",
                         action='append_const',
@@ -764,7 +769,8 @@ if __name__ == '__main__':
         r.main(plots=args.plots, funcs=args.funcs)
 
     else:
-        for run in runs:
+        print "Processing runs: ", args.run
+        for run in args.run:
             print "Extracting " + run + "...\n"
             wd = os.path.join(w_dir, run)
             run_kwargs = {'data_dir':     wd,
