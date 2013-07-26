@@ -274,7 +274,7 @@ class PlotRun(object):
 
     def momentum_flux(self, ax):
         uw = self.Ufp * self.Wfp
-        uw_ = np.abs(r.mean_f(uw))
+        uw_ = np.abs(self.mean_f(uw))
         contourf = ax.contourf(uw_, 100)
         ax.set_title('momentum flux')
         ax.set_xlabel('horizontal')
