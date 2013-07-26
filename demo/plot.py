@@ -62,6 +62,18 @@ default_plots = ['hovmoller',
                  'wavelet',
                  'autocorrelation']
 
+# plots that are self contained (do their own axes composition)
+special_plots = ['power',
+                 'wavelet',
+                 'hovmoller',
+                 'histogram_U',
+                 'histogram_W',
+                 'histogram_absU',
+                 'histogram_shear',
+                 'histogram_vorticity',
+                 'autocorrelation',
+                 'dmd']
+
 
 def front_detect(U):
     # It would be useful to detect where the front is in each image, so
@@ -413,13 +425,6 @@ class PlotRun(object):
 
     def plot_figure(self, quantity, colorbar=True, quiver=True):
         fig, ax = plt.subplots()
-        special_plots = ['power', 'wavelet', 'hovmoller',
-                         'histogram_U',
-                         'histogram_W',
-                         'histogram_absU',
-                         'histogram_shear',
-                         'histogram_vorticity',
-                         'autocorrelation', 'dmd']
         if quantity in special_plots:
             fig = getattr(self, 'plot_' + quantity)()
         else:
