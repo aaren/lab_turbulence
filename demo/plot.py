@@ -191,9 +191,9 @@ class PlotRun(object):
         contourf = ax.contourf(quantity[zi, :, :], levels=self.levels)
         return contourf
 
-    def histogram(self, ax, quantity):
+    def histogram(self, ax, quantity, range, bins=1000):
         uf = quantity.flatten()
-        ax.hist(uf, bins=1000, range=self.u_range)
+        ax.hist(uf, bins=1000, range=range)
         title = 'Streamwise velocity distribution, run {run}'
         ax.set_title(title.format(run=self.index))
         ax.set_xlabel('Streamwise velocity, pixels')
@@ -201,17 +201,27 @@ class PlotRun(object):
         ax.set_yticks([])
         return
 
-    def vertical_distribution(self, ax, quantity):
-        # FIXME: this Z should come from self
-        q = quantity
-        Z = np.indices((q.shape[0],)).squeeze()
-        U_bins = np.histogram(q[0], range=self.u_range, bins=1000)[1]
-        histograms = (np.histogram(q[z], range=self.u_range, bins=1000)[0]
-                      for z in xrange(q.shape[0]))
-        hist_z = np.dstack(histograms).squeeze()
+    def vertical_distribution(self, ax, quantity, range, bins=1000):
+        """Make a contour plot of the vertical distribution of some
+        quantity.
 
+        Creates a histogram (over time and space) for each vertical
+        level and then concatenates these together.
+        """
+        q = quantity
+        # z is the first dimension
+        # FIXME: this Z should come from self
+        iZ = np.indices((q.shape[0],)).squeeze()
+
+        hist_kwargs = {'range': range, 'bins': bins}
+        q_bins = np.histogram(q[0], **hist_kwargs)[1]
+
+        hist_z = np.vstack(np.histogram(q[z], **hist_kwargs)[0] for z in iZ)
+
+        # TODO: determine from histogram?
         levels = np.linspace(0, 500, 100)
-        contourf = ax.contourf(U_bins[1:], Z, hist_z.T, levels=levels)
+        # TODO: change iZ -> dimensioned Z
+        contourf = ax.contourf(q_bins[1:], iZ, hist_z, levels=levels)
 
         ax.set_title('distribution function')
         ax.set_xlabel('quantity')
@@ -474,8 +484,8 @@ class PlotRun(object):
         fig, axes = plt.subplots(nrows=2)
         ax_all_domain_dist, ax_vertical_dist = axes
 
-        self.histogram(ax_all_domain_dist, self.U)
-        self.vertical_distribution(ax_vertical_dist, self.U)
+        self.histogram(ax_all_domain_dist, self.U, range=self.u_range)
+        self.vertical_distribution(ax_vertical_dist, self.U, range=self.u_range)
 
         title = 'Streamwise velocity distribution, run {run}'
         ax_all_domain_dist.set_title(title.format(run=self.index))
@@ -492,8 +502,8 @@ class PlotRun(object):
         fig, axes = plt.subplots(nrows=2)
         ax_all_domain_dist, ax_vertical_dist = axes
 
-        self.histogram(ax_all_domain_dist, self.W)
-        self.vertical_distribution(ax_vertical_dist, self.W)
+        self.histogram(ax_all_domain_dist, self.W, range=self.w_range)
+        self.vertical_distribution(ax_vertical_dist, self.W, range=self.w_range)
 
         title = 'Vertical velocity distribution, run {run}'
         ax_all_domain_dist.set_title(title.format(run=self.index))
