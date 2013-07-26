@@ -423,18 +423,6 @@ class PlotRun(object):
         contourf = ax.contourf(wt, 100)
         return contourf
 
-    def plot_figure(self, quantity, colorbar=True, quiver=True):
-        fig, ax = plt.subplots()
-        if quantity in special_plots:
-            fig = getattr(self, 'plot_' + quantity)()
-        else:
-            plot_func = getattr(self, quantity)(ax)
-            if colorbar:
-                fig.colorbar(plot_func)
-            if quiver:
-                self.overlay_velocities(ax)
-        return fig
-
     def overlay_velocities(self, ax):
         """Given an axes instance, overlay a quiver plot
         of Uf_ and Wf_.
@@ -743,6 +731,18 @@ class PlotRun(object):
 
         fig.tight_layout()
 
+        return fig
+
+    def plot_figure(self, quantity, colorbar=True, quiver=True):
+        fig, ax = plt.subplots()
+        if quantity in special_plots:
+            fig = getattr(self, 'plot_' + quantity)()
+        else:
+            plot_func = getattr(self, quantity)(ax)
+            if colorbar:
+                fig.colorbar(plot_func)
+            if quiver:
+                self.overlay_velocities(ax)
         return fig
 
     def main(self, plots=default_plots, funcs=None):
