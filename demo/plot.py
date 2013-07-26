@@ -45,6 +45,9 @@ run_lims = {'3b4olxqo': (2200, 4400),
 default_plots = ['hovmoller',
                  'histogram_U',
                  'histogram_W',
+                 'histogram_absU',
+                 'histogram_shear',
+                 'histogram_vorticity',
                  'mean_velocity',
                  'mean_velocity_Uf',
                  'mean_velocity_Wf',
@@ -96,6 +99,9 @@ class PlotRun(object):
         self.r = SingleLayerRun(**run_kwargs)
         self.u_range = (-10, 5)
         self.w_range = (-2, 2)
+        self.absu_range = (0,
+                           np.hypot(np.abs(self.u_range).max(),
+                                    np.abs(self.w_range).max()))
         # hack, remove the x at the edges
         for d in ('U', 'W', 'T'):
             arr = getattr(self.r, d)
@@ -221,6 +227,7 @@ class PlotRun(object):
         # TODO: determine from histogram?
         levels = np.linspace(0, 500, 100)
         # TODO: change iZ -> dimensioned Z
+        # TODO: q_bins[1:] is a hack
         contourf = ax.contourf(q_bins[1:], iZ, hist_z, levels=levels)
 
         ax.set_title('distribution function')
@@ -406,8 +413,13 @@ class PlotRun(object):
 
     def plot_figure(self, quantity, colorbar=True, quiver=True):
         fig, ax = plt.subplots()
-        special_plots = ['power', 'wavelet', 'hovmoller', 'histogram_U',
-                         'histogram_W', 'autocorrelation', 'dmd']
+        special_plots = ['power', 'wavelet', 'hovmoller',
+                         'histogram_U',
+                         'histogram_W',
+                         'histogram_absU',
+                         'histogram_shear',
+                         'histogram_vorticity',
+                         'autocorrelation', 'dmd']
         if quantity in special_plots:
             fig = getattr(self, 'plot_' + quantity)()
         else:
@@ -484,8 +496,8 @@ class PlotRun(object):
         fig, axes = plt.subplots(nrows=2)
         ax_all_domain_dist, ax_vertical_dist = axes
 
-        self.histogram(ax_all_domain_dist, self.U, range=self.u_range)
-        self.vertical_distribution(ax_vertical_dist, self.U, range=self.u_range)
+        self.histogram(ax_all_domain_dist, self.Uf, range=self.u_range)
+        self.vertical_distribution(ax_vertical_dist, self.Uf, range=self.u_range)
 
         title = 'Streamwise velocity distribution, run {run}'
         ax_all_domain_dist.set_title(title.format(run=self.index))
@@ -502,8 +514,8 @@ class PlotRun(object):
         fig, axes = plt.subplots(nrows=2)
         ax_all_domain_dist, ax_vertical_dist = axes
 
-        self.histogram(ax_all_domain_dist, self.W, range=self.w_range)
-        self.vertical_distribution(ax_vertical_dist, self.W, range=self.w_range)
+        self.histogram(ax_all_domain_dist, self.Wf, range=self.w_range)
+        self.vertical_distribution(ax_vertical_dist, self.Wf, range=self.w_range)
 
         title = 'Vertical velocity distribution, run {run}'
         ax_all_domain_dist.set_title(title.format(run=self.index))
@@ -511,6 +523,68 @@ class PlotRun(object):
 
         ax_vertical_dist.set_title('vertical velocity distribution')
         ax_vertical_dist.set_xlabel('vertical velocity')
+
+        fig.tight_layout()
+
+        return fig
+
+    def plot_histogram_absU(self):
+        fig, axes = plt.subplots(nrows=2)
+        ax_all_domain_dist, ax_vertical_dist = axes
+
+        self.histogram(ax_all_domain_dist, self.uf_abs, range=self.absu_range)
+        self.vertical_distribution(ax_vertical_dist, self.uf_abs, range=self.absu_range)
+
+        title = 'Absolute velocity distribution, run {run}'
+        ax_all_domain_dist.set_title(title.format(run=self.index))
+        ax_all_domain_dist.set_xlabel('Absolute velocity, pixels')
+
+        ax_vertical_dist.set_title('Vertical absolute velocity distribution')
+        ax_vertical_dist.set_xlabel('absolute velocity')
+
+        fig.tight_layout()
+
+        return fig
+
+    def plot_histogram_shear(self):
+        fig, axes = plt.subplots(nrows=2)
+        ax_all_domain_dist, ax_vertical_dist = axes
+
+        self.histogram(ax_all_domain_dist,
+                       self.vertical_shear,
+                       range=self.w_range)
+        self.vertical_distribution(ax_vertical_dist,
+                                   self.vertical_shear,
+                                   range=self.w_range)
+
+        title = 'Vertical shear distribution, run {run}'
+        ax_all_domain_dist.set_title(title.format(run=self.index))
+        ax_all_domain_dist.set_xlabel('Vertical shear')
+
+        ax_vertical_dist.set_title('vertical shear distribution')
+        ax_vertical_dist.set_xlabel('vertical shear')
+
+        fig.tight_layout()
+
+        return fig
+
+    def plot_histogram_vorticity(self):
+        fig, axes = plt.subplots(nrows=2)
+        ax_all_domain_dist, ax_vertical_dist = axes
+
+        self.histogram(ax_all_domain_dist,
+                       self.vorticity,
+                       range=self.w_range)
+        self.vertical_distribution(ax_vertical_dist,
+                                   self.vorticity,
+                                   range=self.w_range)
+
+        title = 'Vorcity distribution, run {run}'
+        ax_all_domain_dist.set_title(title.format(run=self.index))
+        ax_all_domain_dist.set_xlabel('Vorticity')
+
+        ax_vertical_dist.set_title('vertical vorticity distribution')
+        ax_vertical_dist.set_xlabel('vorticity')
 
         fig.tight_layout()
 
