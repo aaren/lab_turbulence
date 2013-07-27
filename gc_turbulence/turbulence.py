@@ -112,24 +112,6 @@ class SingleLayerFrame(object):
         data = {k: D[:, self.columns[k]].reshape(shape) for k in self.columns}
         return data
 
-    def make_quiver_plot(self, quiver_dir=''):
-        """Make a quiver plot of the frame data."""
-        fig = plt.figure()
-        ax = plt.axes(xlim=(10, 80), ylim=(0, 50))
-        ax.quiver(self.u, self.w, scale=200)
-        quiver_name = self.quiver_name
-        quiver_path = os.path.join(quiver_dir, quiver_name)
-        fig.savefig(quiver_path)
-
-    @property
-    def quiver_name(self):
-        """Generate name for quiver plot given an input text
-        filename.
-        """
-        new_name = self.fname.split('.')[-2]
-        quiver_fname = self.quiver_format.format(f=new_name)
-        return quiver_fname
-
 
 # These functions are out here because they need to be pickleable
 # for multiprocessing to work. Shame of this is that they can't
@@ -151,21 +133,6 @@ def instantiateFrame(args):
     pbar.update()
     queue.put(frame)
     return
-
-
-def gen_quiver_plot(args):
-    """Create a frame instance and make the quiver plot.
-
-    This is a wrapper to allow multiprocessing.
-    """
-    fname = args['fname']
-    queue = args['queue']
-    pbar = args['pbar']
-    quiver_dir = args['quiver_dir']
-    frame = SingleLayerFrame(fname, columns=args['columns'])
-    frame.make_quiver_plot(quiver_dir=quiver_dir)
-    pbar.update()
-    queue.put(1)
 
 
 class SingleLayerRun(object):
@@ -271,8 +238,6 @@ class SingleLayerRun(object):
             self.files = self.allfiles
 
         self.nfiles = len(self.files)
-        self.quiver_dir = os.path.join(self.data_dir, 'quiver')
-        self.quiver_format = 'quiver_{f}.png'
         self.init_vectors()
 
     def init_vectors(self):
@@ -345,17 +310,6 @@ class SingleLayerRun(object):
         # order based on filename
         sorted_frames = sorted(frames, key=lambda f: f.fname)
         return sorted_frames
-
-    def make_quivers(self):
-        """Take the text files for this run and generate quiver plots
-        in parallel using multiprocessing.
-        """
-        print("Generating {n} quiver plots".format(n=len(self.files)))
-        makedirs_p(self.quiver_dir)
-        quiver_kwargs = {'quiver_dir': self.quiver_dir,
-                         'columns':    self.columns}
-        arglist = [dict(quiver_kwargs, fname=f) for f in self.files]
-        parallel_process(gen_quiver_plot, arglist)
 
     def save(self):
         """Save run arrays to disk."""

@@ -15,7 +15,6 @@ for root, dirs, files in os.walk('tests/ex_data/cache', topdown=False):
     for name in dirs:
         os.rmdir(os.path.join(root, name))
 
-baseline_quiver = 'tests/ex_data/baseline/quiver/quiver_000500.png'
 w_dir = 'tests/ex_data'
 
 run_kwargs = dict(data_dir=w_dir, index='3b4olxqo', rex='.000*')
@@ -33,17 +32,6 @@ columns_3d = {'x': 2,
               'u': 4,
               'v': 6,
               'w': 5}
-
-
-def test_quivers():
-    """Make a load of quiver plots with multiprocessing (default)
-    and compare one of the output images to a reference image.
-    """
-    run.make_quivers()
-    test_quiver = os.path.join(w_dir, 'quiver/quiver_000500.png')
-    test_im = imread(test_quiver)
-    baseline_im = imread(baseline_quiver)
-    npt.assert_array_equal(test_im, baseline_im)
 
 
 def test_frames():
