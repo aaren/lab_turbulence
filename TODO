@@ -25,10 +25,6 @@ Following 19/7/13 meeting:
     - High pass filter to remove head region
     - average over domain
 
-- Distributions (generalise to any quantity input)
-    - shear
-    - vorticity
-
 - Extrema
     - Plot distribution of e.g. 95th percentile velocity over domain
 

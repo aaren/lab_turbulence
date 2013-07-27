@@ -43,11 +43,6 @@ run_lims = {'3b4olxqo': (2200, 4400),
 
 # plots to create by default (based on function names in PlotRun)
 default_plots = ['hovmoller',
-                 'histogram_U',
-                 'histogram_W',
-                 'histogram_absU',
-                 'histogram_shear',
-                 'histogram_vorticity',
                  'mean_velocity',
                  'mean_velocity_Uf',
                  'mean_velocity_Wf',
@@ -66,11 +61,6 @@ default_plots = ['hovmoller',
 special_plots = ['power',
                  'wavelet',
                  'hovmoller',
-                 'histogram_U',
-                 'histogram_W',
-                 'histogram_absU',
-                 'histogram_shear',
-                 'histogram_vorticity',
                  'autocorrelation',
                  'dmd']
 
@@ -109,11 +99,6 @@ class PlotRun(object):
                           'caching':   True,
                           'limits':    run_lims[run]}
         self.r = SingleLayerRun(**run_kwargs)
-        self.u_range = (-10, 5)
-        self.w_range = (-2, 2)
-        self.absu_range = (0,
-                           np.hypot(np.abs(self.u_range).max(),
-                                    np.abs(self.w_range).max()))
         # hack, remove the x at the edges
         for d in ('U', 'W', 'T'):
             arr = getattr(self.r, d)
@@ -154,10 +139,40 @@ class PlotRun(object):
         # vertical absolute velocity shear
         self.vertical_shear = np.hypot(self.dUfz, self.dWfz)
 
+        # ranges for plotting
+        self.u_range = (-10, 5)
+        self.w_range = (-2, 2)
+        self.u_abs_range = (0,
+                            np.hypot(np.abs(self.u_range).max(),
+                                     np.abs(self.w_range).max()))
+
         # colour levels for contour plotting
         self.levels_u = np.linspace(*self.u_range, num=100)
         self.levels_w = np.linspace(*self.w_range, num=100)
         self.levels = self.levels_u
+
+    @property
+    def properties(self):
+        """Define properties of quantities. Used in plotting to give a
+        string to put in title, axes labels etc."""
+        return {'U':  {'name': 'streamwise velocity',
+                       'range': self.u_range},
+                'Uf': {'name': 'streamwise velocity',
+                       'range': self.u_range},
+                'W':  {'name': 'vertical velocity',
+                       'range': self.w_range},
+                'Wf':  {'name': 'vertical velocity',
+                        'range': self.w_range},
+                'Uf_': {'name': 'mean streamwise velocity',
+                        'range': self.u_range},
+                'Wf_': {'name': 'mean vertical velocity',
+                        'range': self.w_range},
+                'uf_abs': {'name': 'absolute velocity',
+                           'range': self.u_abs_range},
+                'vorticity': {'name': 'vorticity',
+                              'range': self.w_range},
+                'vertical_shear': {'name': 'vertical_shear',
+                                   'range': self.w_range}}
 
     def mean_f(self, x):
         """Compute mean over time varying axis of a front relative
@@ -485,99 +500,24 @@ class PlotRun(object):
 
         return fig
 
-    def plot_histogram_U(self):
+    def plot_distribution(self, q, q_range, name):
         fig, axes = plt.subplots(nrows=2)
         ax_all_domain_dist, ax_vertical_dist = axes
 
-        self.histogram(ax_all_domain_dist, self.Uf, range=self.u_range)
-        self.vertical_distribution(ax_vertical_dist, self.Uf, range=self.u_range)
+        self.histogram(ax_all_domain_dist, q, range=q_range)
+        self.vertical_distribution(ax_vertical_dist, q, range=q_range)
 
-        title = 'Streamwise velocity distribution, run {run}'
-        ax_all_domain_dist.set_title(title.format(run=self.index))
-        ax_all_domain_dist.set_xlabel('Streamwise velocity, pixels')
+        all_domain_title = '{quantity} distribution, run {run}'
+        all_domain_title = all_domain_title.format(run=self.index,
+                                                   quantity=name)
+        all_domain_xlabel = '{quantity}'.format(quantity=name)
+        ax_all_domain_dist.set_title(all_domain_title)
+        ax_all_domain_dist.set_xlabel(all_domain_xlabel)
 
-        ax_vertical_dist.set_title('streamwise velocity distribution')
-        ax_vertical_dist.set_xlabel('streamwise velocity')
-
-        fig.tight_layout()
-
-        return fig
-
-    def plot_histogram_W(self):
-        fig, axes = plt.subplots(nrows=2)
-        ax_all_domain_dist, ax_vertical_dist = axes
-
-        self.histogram(ax_all_domain_dist, self.Wf, range=self.w_range)
-        self.vertical_distribution(ax_vertical_dist, self.Wf, range=self.w_range)
-
-        title = 'Vertical velocity distribution, run {run}'
-        ax_all_domain_dist.set_title(title.format(run=self.index))
-        ax_all_domain_dist.set_xlabel('Vertical velocity, pixels')
-
-        ax_vertical_dist.set_title('vertical velocity distribution')
-        ax_vertical_dist.set_xlabel('vertical velocity')
-
-        fig.tight_layout()
-
-        return fig
-
-    def plot_histogram_absU(self):
-        fig, axes = plt.subplots(nrows=2)
-        ax_all_domain_dist, ax_vertical_dist = axes
-
-        self.histogram(ax_all_domain_dist, self.uf_abs, range=self.absu_range)
-        self.vertical_distribution(ax_vertical_dist, self.uf_abs, range=self.absu_range)
-
-        title = 'Absolute velocity distribution, run {run}'
-        ax_all_domain_dist.set_title(title.format(run=self.index))
-        ax_all_domain_dist.set_xlabel('Absolute velocity, pixels')
-
-        ax_vertical_dist.set_title('Vertical absolute velocity distribution')
-        ax_vertical_dist.set_xlabel('absolute velocity')
-
-        fig.tight_layout()
-
-        return fig
-
-    def plot_histogram_shear(self):
-        fig, axes = plt.subplots(nrows=2)
-        ax_all_domain_dist, ax_vertical_dist = axes
-
-        self.histogram(ax_all_domain_dist,
-                       self.vertical_shear,
-                       range=self.w_range)
-        self.vertical_distribution(ax_vertical_dist,
-                                   self.vertical_shear,
-                                   range=self.w_range)
-
-        title = 'Vertical shear distribution, run {run}'
-        ax_all_domain_dist.set_title(title.format(run=self.index))
-        ax_all_domain_dist.set_xlabel('Vertical shear')
-
-        ax_vertical_dist.set_title('vertical shear distribution')
-        ax_vertical_dist.set_xlabel('vertical shear')
-
-        fig.tight_layout()
-
-        return fig
-
-    def plot_histogram_vorticity(self):
-        fig, axes = plt.subplots(nrows=2)
-        ax_all_domain_dist, ax_vertical_dist = axes
-
-        self.histogram(ax_all_domain_dist,
-                       self.vorticity,
-                       range=self.w_range)
-        self.vertical_distribution(ax_vertical_dist,
-                                   self.vorticity,
-                                   range=self.w_range)
-
-        title = 'Vorcity distribution, run {run}'
-        ax_all_domain_dist.set_title(title.format(run=self.index))
-        ax_all_domain_dist.set_xlabel('Vorticity')
-
-        ax_vertical_dist.set_title('vertical vorticity distribution')
-        ax_vertical_dist.set_xlabel('vorticity')
+        vertical_dist_title = '{quantity} distribution'.format(quantity=name)
+        vertical_dist_xlabel = '{quantity}'.format(quantity=name)
+        ax_vertical_dist.set_title(vertical_dist_title)
+        ax_vertical_dist.set_xlabel(vertical_dist_xlabel)
 
         fig.tight_layout()
 
@@ -745,14 +685,16 @@ class PlotRun(object):
                 self.overlay_velocities(ax)
         return fig
 
-    def main(self, plots=default_plots, funcs=None):
-        """plots is a list of plotting functions to execute and save.
+    def main(self, args):
+        """args is an Argparse namespace with command line options.
+
+        plots is a list of plotting functions to execute and save.
 
         funcs is a list of plotting functions to execute. This is used
         for multiprocessing plotting functions that don't return a single
         figure.
         """
-        for plot in plots:
+        for plot in args.plots:
             if plot == 'no_plot':
                 break
             print "plotting", plot
@@ -764,8 +706,24 @@ class PlotRun(object):
             fpath = os.path.join(plot_dir, fname)
             fig.savefig(fpath)
 
-        if funcs:
-            for func in funcs:
+        if args.distributions == 'all':
+            distributions = ['Uf', 'Wf', 'uf_abs',
+                             'vorticity', 'vertical_shear']
+        else:
+            distributions = args.distributions
+        for dist in distributions:
+            range = self.properties[dist]['range']
+            name = self.properties[dist]['name']
+            print "plotting distribution", dist, name
+            fig = self.plot_distribution(getattr(self, dist), range, name)
+
+            fformat = 'distribution_{q}_{index}.{ext}'
+            fname = fformat.format(q=dist, index=self.index, ext='png')
+            fpath = os.path.join(plot_dir, fname)
+            fig.savefig(fpath)
+
+        if args.funcs:
+            for func in args.funcs:
                 print "multiprocessing", func
                 f = getattr(self, 'plot_' + func)
                 f()
@@ -874,6 +832,11 @@ if __name__ == '__main__':
                         nargs='*',
                         dest='run',
                         default=runs)
+    parser.add_argument("--distributions",
+                        help="specify distribution plots to make",
+                        nargs='?',
+                        default=[],
+                        const='all')
     parser.add_argument("--vertical_transects",
                         help="compute vertical transects (multiprocessing)",
                         action='append_const',
@@ -904,11 +867,11 @@ if __name__ == '__main__':
 
     if args.test:
         r = test_run(index=test_run_index, reload=args.reload)
-        r.main(plots=args.plots, funcs=args.funcs)
+        r.main(args)
 
     elif args.cache_test:
         r = cache_test_run(index=test_run_index)
-        r.main(plots=args.plots, funcs=args.funcs)
+        r.main(args)
 
     else:
         print "Processing runs: ", args.run
@@ -922,4 +885,4 @@ if __name__ == '__main__':
                           'cache_reload': args.reload,
                           'limits':       run_lims[run]}
             pr = PlotRun(run, run_kwargs)
-            pr.main(plots=args.plots, funcs=args.funcs)
+            pr.main(args)
