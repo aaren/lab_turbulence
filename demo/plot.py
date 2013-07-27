@@ -110,9 +110,9 @@ class PlotRun(object):
 
         self.T_width = t_width
         self.front_offset = -50
-        self.Uf = self.reshape_to_current_relative(self.U, self.front_offset, self.T_width)
-        self.Wf = self.reshape_to_current_relative(self.W, self.front_offset, self.T_width)
-        self.Tf = self.reshape_to_current_relative(self.T, self.front_offset, self.T_width)
+        self.Uf = self.reshape_to_current_relative(self.U)
+        self.Wf = self.reshape_to_current_relative(self.W)
+        self.Tf = self.reshape_to_current_relative(self.T)
 
         ## gradients
         self.dUz, self.dUx, self.dUt = np.gradient(self.U)
@@ -165,13 +165,15 @@ class PlotRun(object):
         # calcs - change Uf dims to make consistent?
         return stats.nanstd(x, axis=1)
 
-    def reshape_to_current_relative(self, vel, T0, T1):
+    def reshape_to_current_relative(self, vel):
         """Take the velocity data and transform it to the current
         relative frame.
         """
         # tf is the time of front passage as f(x), i.e. supply this
         # with an argument in x and we get the corresponding time
         # reshape, taking a constant T time intervals behind front
+        T0 = self.front_offset
+        T1 = self.T_width
         tf = self.tf
         X = np.indices((vel.shape[1],)).squeeze()
         U_ = np.dstack(vel[:, x, int(tf(x)) + T0:int(tf(x)) + T1] for x in X)
