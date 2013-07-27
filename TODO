@@ -11,14 +11,13 @@
 - Abstract plotting of simple axes to a single function with arguments
   that are looked up in a dictionary of default plots.
 
+- Flesh out DMD
+
 
 Following 19/7/13 meeting:
 
 - Power Spectra
     - Pick distinct domains to analyse
-
-- DMD
-    - apply to front relative field
 
 - Wavelets
     - Heaviside function
