@@ -590,13 +590,13 @@ class PlotRun(object):
         """
         U = self.r.U[:, 15:-15, :]
         T = range(U.shape[2])
-        arglist = [dict(t=t,
+        kwarglist = [dict(t=t,
                         index=self.index,
                         U=U,
                         levels=self.levels,
                         fname=self.time_slice_path(t))
                    for t in T]
-        util.parallel_process(plot_time_slice, arglist)
+        util.parallel_process(plot_time_slice, kwarglist=kwarglist)
 
     def plot_vertical_transects(self):
         """If we take a vertical profile at a given horizontal
@@ -612,13 +612,13 @@ class PlotRun(object):
         U = self.Uf
         # TODO: why is this X reversed? should get this from self?
         X = range(U.shape[1])[::-1]
-        arglist = [dict(x=x,
+        kwarglist = [dict(x=x,
                         index=self.index,
                         U=U,
                         levels=self.levels,
                         fname=self.vertical_transect_path(x))
                    for x in X]
-        util.parallel_process(plot_vertical_transect, arglist)
+        util.parallel_process(plot_vertical_transect, kwarglist=kwarglist)
 
     def time_slice_path(self, t):
         fname = 'time_slices/time_slice_{r}_{t:0>4d}.png'
@@ -730,17 +730,11 @@ class PlotRun(object):
                 f()
 
 
-def plot_time_slice(args):
+@util.parallel_stub
+def plot_time_slice(index, t, U, fname, levels):
     """Plot a single vertical transect. Function external to class to
     allow multiprocessing.
     """
-    index = args["index"]
-    t = args["t"]
-    U = args["U"]
-    pbar = args['pbar']
-    fname = args['fname']
-    queue = args['queue']
-    levels = args['levels']
     fig = plt.figure()
     ax = fig.add_subplot(111)
     title = 'Time slice {r} {t:0>4d}'.format(r=index, t=t)
@@ -750,21 +744,13 @@ def plot_time_slice(args):
     fig.colorbar(contourf)
     util.makedirs_p(os.path.dirname(fname))
     fig.savefig(fname)
-    queue.put(1)
-    pbar.update()
 
 
-def plot_vertical_transect(args):
+@util.parallel_stub
+def plot_vertical_transect(index, x, U, fname, levels):
     """Plot a single vertical transect. Function external to class to
     allow multiprocessing.
     """
-    index = args["index"]
-    x = args["x"]
-    U = args["U"]
-    pbar = args['pbar']
-    fname = args['fname']
-    queue = args['queue']
-    levels = args['levels']
     fig = plt.figure()
     ax = fig.add_subplot(111)
     title = 'Vertical transect {r} {x:0>4d}'.format(r=index, x=x)
@@ -774,8 +760,6 @@ def plot_vertical_transect(args):
     fig.colorbar(contourf)
     util.makedirs_p(os.path.dirname(fname))
     fig.savefig(fname)
-    queue.put(1)
-    pbar.update()
 
 
 def test_run(index='3ban2y82', reload=False):

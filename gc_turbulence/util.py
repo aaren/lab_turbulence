@@ -57,29 +57,35 @@ ProgressManager.register(typeid='ProgressUpdater',
                          exposed=['start', 'finish', 'update', 'currval'])
 
 
-def parallel_process(function, arglist, processors=None):
+def parallel_process(function, kwarglist, processors=None):
     """Parallelise execution of a function over a list of arguments.
 
     Inputs: function - function to apply
-            arglist - iterator of arguments to apply function to
-            processors - number of processors to use, default None is
-                         to use 4 times the number of processors
+            kwarglist - iterator of keyword arguments to apply
+                        function to
+            processors - number of processors to use, default None
+                         is to use 4 times the number of processors
+
+    Returns: an *unordered* list of the return values of the
+             function.
+
+    The list of arguments must be formatted as keyword arguments,
+    i.e. be a list of dictionaries.
+    TODO: can it actually be a generator?
+    No because take the len() of it.
 
     Explicitly splits a list of inputs into chunks and then
     operates on these chunks one at a time.
 
     I have tried using Pool for this, but it doesn't seem to release
-    memory sensibly, despite setting maxtasksperchild.
-
-    This function does not return an ordered list of outputs.
+    memory sensibly, despite setting maxtasksperchild. Thus, I've
+    used Process and explicitly start and end the jobs.
 
     This does what it was supposed to which is keep the memory usage
     limited to that needed by the number of calls that can fit into
     the number of processes.  However, it is pretty slow if you have
     processors equal to the number available. If you set it high things
     happen quicker, but the load average can go a bit mad :).
-
-
     """
     def chunker(seq, size):
         return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
@@ -93,18 +99,18 @@ def parallel_process(function, arglist, processors=None):
     # shared progressbar
     progress_manager = ProgressManager()
     progress_manager.start()
-    N = len(arglist)
+    N = len(kwarglist)
     pbar = progress_manager.ProgressUpdater(maxval=N)
     pbar.start()
 
     # The queue for storing the results
     # manager = mp.Manager()
     queue = mp.Queue()
-    args = [dict(a, queue=queue, pbar=pbar) for a in arglist]
+    kwargs_list = [dict(a, queue=queue, pbar=pbar) for a in kwarglist]
 
     outputs = []
-    for job in chunker(args, processors):
-        processes = [mp.Process(target=function, args=(arg,)) for arg in job]
+    for job in chunker(kwargs_list, processors):
+        processes = [mp.Process(target=function, kwargs=kwargs) for kwargs in job]
         # start them all going
         for p in processes:
             p.start()
@@ -120,3 +126,17 @@ def parallel_process(function, arglist, processors=None):
 
     pbar.finish()
     return outputs
+
+
+def parallel_stub(stub):
+    """Decorator to use on functions that are fed to
+    parallel_process. Calls the function and appends any output to
+    the queue, then updates the progressbar.
+    """
+    def f(**args):
+        pbar = args.pop('pbar')
+        queue = args.pop('queue')
+        ret = stub(**args)
+        queue.put(ret)
+        pbar.update()
+    return f

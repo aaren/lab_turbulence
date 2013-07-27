@@ -10,6 +10,7 @@ if 'DISPLAY' not in os.environ:
 import matplotlib.pyplot as plt
 
 from util import parallel_process
+from util import parallel_stub
 from util import makedirs_p
 from util import ProgressBar
 
@@ -116,7 +117,8 @@ class SingleLayerFrame(object):
 # These functions are out here because they need to be pickleable
 # for multiprocessing to work. Shame of this is that they can't
 # access class state.
-def instantiateFrame(args):
+@parallel_stub
+def instantiateFrame(fname, columns):
     """Create and return a frame instance. Single argument which
     consists of a filename and a queue. The filename is the file
     to create the frame from (as in __init__ of SingleLayer2dFrame).
@@ -126,13 +128,8 @@ def instantiateFrame(args):
     the pbar is a progress bar that is shared between multiple
     Process() instances.
     """
-    fname = args['fname']
-    queue = args['queue']
-    pbar = args['pbar']
-    frame = SingleLayerFrame(fname=fname, columns=args['columns'])
-    pbar.update()
-    queue.put(frame)
-    return
+    frame = SingleLayerFrame(fname=fname, columns=columns)
+    return frame
 
 
 class SingleLayerRun(object):
@@ -303,8 +300,8 @@ class SingleLayerRun(object):
     def get_frames_parallel(self, processors=20):
         """Get the frames with multiprocessing.
         """
-        args = [dict(fname=f, columns=self.columns) for f in self.files]
-        frames = parallel_process(instantiateFrame, args, processors)
+        kwargs = [dict(fname=f, columns=self.columns) for f in self.files]
+        frames = parallel_process(instantiateFrame, kwarglist=kwargs, processors=processors)
         if type(frames) is not list:
             raise UserWarning('frames is not list!')
         # order based on filename
