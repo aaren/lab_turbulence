@@ -610,6 +610,7 @@ class PlotRun(object):
         we end up with a series of plots that can be animated.
         """
         U = self.Uf
+        # TODO: why is this X reversed? should get this from self?
         X = range(U.shape[1])[::-1]
         arglist = [dict(x=x,
                         index=self.index,
