@@ -219,9 +219,7 @@ class SingleLayerRun(object):
         self.vectors = self.columns.keys() + ['t']
 
         # default cache_dir
-        if not cache_dir:
-            cache_dir = os.path.join(data_dir, 'cache')
-        self.cache_dir = cache_dir
+        self.cache_dir = cache_dir or os.path.join(data_dir, 'cache')
 
         cache_fname = '{index}.npz'.format(index=self.index)
         self.cache_path = os.path.join(self.cache_dir, cache_fname)
