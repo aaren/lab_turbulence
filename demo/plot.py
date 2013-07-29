@@ -100,6 +100,7 @@ class PlotRun(object):
                           'limits':    run_lims[run]}
         self.r = SingleLayerRun(**run_kwargs)
         # hack, remove the x at the edges
+        # TODO: this should be done with masking somewhere # previously
         for d in ('U', 'W', 'T'):
             arr = getattr(self.r, d)
             setattr(self, d, arr[:, 15:-15, :])
