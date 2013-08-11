@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 
 import modred as mr
 
+import wavelets
+
 from gc_turbulence.gc_turbulence.turbulence import SingleLayerRun
 import gc_turbulence.gc_turbulence.util as util
 
@@ -427,16 +429,18 @@ class PlotRun(object):
         return contourf
 
     def wavelet(self, ax):
-        ax.set_title('Wavelet analysis (ricker)')
-        ax.set_xlabel('time')
-        ax.set_ylabel('period')
+        ax.set_title('Wavelet analysis (morlet)')
+        ax.set_xlabel('time (s)')
+        ax.set_ylabel('fourier period (s)')
 
-        wavelet_function = signal.wavelets.ricker
+        sig = self.U[20, 20, :]
+        wa = wavelets.WaveletAnalysis(sig, dt=0.01, wavelet=wavelets.Morlet())
 
-        scales = np.arange(1, 1500)
+        T, S = np.meshgrid(wa.time, wa.fourier_periods)
 
-        wt = signal.cwt(self.U[20, 20, :], wavelet_function, scales)
-        contourf = ax.contourf(wt, 100)
+        contourf = ax.contourf(T, S, wa.wavelet_power, 100)
+        ax.set_yscale('log')
+
         return contourf
 
     def overlay_velocities(self, ax):
