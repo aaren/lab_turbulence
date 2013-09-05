@@ -135,10 +135,10 @@ def parallel_stub(stub):
     parallel_process. Calls the function and appends any output to
     the queue, then updates the progressbar.
     """
-    def f(**args):
-        pbar = args.pop('pbar')
-        queue = args.pop('queue')
-        ret = stub(**args)
+    def f(**kwargs):
+        pbar = kwargs.pop('pbar')
+        queue = kwargs.pop('queue')
+        ret = stub(**kwargs)
         queue.put(ret)
         pbar.update()
     return f
