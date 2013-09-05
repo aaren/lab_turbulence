@@ -1,3 +1,4 @@
+import sys
 import functools
 import os
 import errno
@@ -101,9 +102,10 @@ def parallel_process(function, kwarglist, N, processors=None):
     kwargs_list = [dict(a, pbar=pbar) for a in kwarglist]
 
     pool = mp.Pool()
-    outputs = pool.imap_unordered(function, kwargs_list)
+    outputs = pool.map(function, kwargs_list)
     pool.close()
     pool.join()
+
     pbar.finish()
 
     return outputs

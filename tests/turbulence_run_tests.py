@@ -1,4 +1,6 @@
 import os
+import sys
+
 from nose.tools import *
 
 import numpy.testing as npt
@@ -32,7 +34,7 @@ columns_3d = {'x': 2,
               'u': 4,
               'v': 6,
               'w': 5}
-
+sys.stderr.write('...init')
 
 def test_frames():
     """Generates an array of horizontal velocities from the test data."""

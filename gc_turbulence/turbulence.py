@@ -302,8 +302,6 @@ class SingleLayerRun(object):
         """
         kwargs = [dict(fname=f, columns=self.columns) for f in self.files]
         frames = parallel_process(instantiateFrame, kwarglist=kwargs, N=len(self.files), processors=processors)
-        if type(frames) is not list:
-            raise UserWarning('frames is not list!')
         # order based on filename
         sorted_frames = sorted(frames, key=lambda f: f.fname)
         return sorted_frames
