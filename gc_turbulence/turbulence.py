@@ -301,7 +301,7 @@ class SingleLayerRun(object):
         """Get the frames with multiprocessing.
         """
         kwargs = [dict(fname=f, columns=self.columns) for f in self.files]
-        frames = parallel_process(instantiateFrame, kwarglist=kwargs, processors=processors)
+        frames = parallel_process(instantiateFrame, kwarglist=kwargs, N=len(self.files), processors=processors)
         if type(frames) is not list:
             raise UserWarning('frames is not list!')
         # order based on filename

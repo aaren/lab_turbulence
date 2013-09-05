@@ -57,7 +57,7 @@ ProgressManager.register(typeid='ProgressUpdater',
                          exposed=['start', 'finish', 'update', 'currval'])
 
 
-def parallel_process(function, kwarglist, processors=None):
+def parallel_process(function, kwarglist, N, processors=None):
     """Parallelise execution of a function over a list of arguments.
 
     Inputs: function - function to apply
@@ -99,7 +99,6 @@ def parallel_process(function, kwarglist, processors=None):
     # shared progressbar
     progress_manager = ProgressManager()
     progress_manager.start()
-    N = len(kwarglist)
     pbar = progress_manager.ProgressUpdater(maxval=N)
     pbar.start()
 
