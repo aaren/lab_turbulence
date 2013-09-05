@@ -106,6 +106,8 @@ def parallel_process(function, kwarglist, processors=None):
     # The queue for storing the results
     # manager = mp.Manager()
     queue = mp.Queue()
+    # TODO: allow arglist as well as kwarglist
+    # TODO: allow args and kwargs, where these are lists
     kwargs_list = [dict(a, queue=queue, pbar=pbar) for a in kwarglist]
 
     outputs = []
