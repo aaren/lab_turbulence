@@ -1,3 +1,4 @@
+import functools
 import os
 import errno
 import multiprocessing as mp
@@ -87,14 +88,8 @@ def parallel_process(function, kwarglist, N, processors=None):
     processors equal to the number available. If you set it high things
     happen quicker, but the load average can go a bit mad :).
     """
-    def chunker(seq, size):
-        return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
-
-    # set processors equal to 4 times the number of physical
-    # processors - typically good trade between memory use and
-    # waiting for processes to get going
     if not processors:
-        processors = mp.cpu_count() * 4
+        processors = 2
 
     # shared progressbar
     progress_manager = ProgressManager()
@@ -102,28 +97,17 @@ def parallel_process(function, kwarglist, N, processors=None):
     pbar = progress_manager.ProgressUpdater(maxval=N)
     pbar.start()
 
-    # The queue for storing the results
     # manager = mp.Manager()
-    queue = mp.Queue()
-    kwargs_list = [dict(a, queue=queue, pbar=pbar) for a in kwarglist]
+    kwargs_list = [dict(a, pbar=pbar) for a in kwarglist]
 
-    outputs = []
-    for job in chunker(kwargs_list, processors):
-        processes = [mp.Process(target=function, kwargs=kwargs) for kwargs in job]
-        # start them all going
-        for p in processes:
-            p.start()
-        # populate the queue, if it was given
-        if queue:
-            for p in processes:
-                outputs.append(queue.get())
-        else:
-            outputs = None
-        # now wait for all the processes in this job to finish
-        for p in processes:
-            p.join()
-
+    pool = mp.Pool()
+    outputs = pool.map(function, kwargs_list)
+    pool.close()
+    pool.join()
     pbar.finish()
+
+    print outputs
+    print list(outputs)
     return outputs
 
 
@@ -134,8 +118,8 @@ def parallel_stub(stub):
     """
     def f(**args):
         pbar = args.pop('pbar')
-        queue = args.pop('queue')
         ret = stub(**args)
-        queue.put(ret)
         pbar.update()
+        return ret
+    functools.update_wrapper(f, stub)
     return f
