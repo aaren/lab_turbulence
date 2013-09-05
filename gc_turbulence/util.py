@@ -101,13 +101,11 @@ def parallel_process(function, kwarglist, N, processors=None):
     kwargs_list = [dict(a, pbar=pbar) for a in kwarglist]
 
     pool = mp.Pool()
-    outputs = pool.map(function, kwargs_list)
+    outputs = pool.imap_unordered(function, kwargs_list)
     pool.close()
     pool.join()
     pbar.finish()
 
-    print outputs
-    print list(outputs)
     return outputs
 
 
@@ -116,10 +114,10 @@ def parallel_stub(stub):
     parallel_process. Calls the function and appends any output to
     the queue, then updates the progressbar.
     """
-    def f(**args):
-        pbar = args.pop('pbar')
-        ret = stub(**args)
+    @functools.wraps(stub)
+    def f(kwargs):
+        pbar = kwargs.pop('pbar')
+        ret = stub(**kwargs)
         pbar.update()
         return ret
-    functools.update_wrapper(f, stub)
     return f
