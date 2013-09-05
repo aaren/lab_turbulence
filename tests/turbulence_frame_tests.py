@@ -1,6 +1,6 @@
 from nose.tools import *
 
-from ..gc_turbulence.turbulence import SingleLayerFrame
+from gc_turbulence.turbulence import SingleLayerFrame
 
 
 columns_2d = {'x': 0,

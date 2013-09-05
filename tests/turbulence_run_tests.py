@@ -4,8 +4,8 @@ from nose.tools import *
 import numpy.testing as npt
 from scipy.misc import imread
 
-from ..gc_turbulence.turbulence import SingleLayerFrame
-from ..gc_turbulence.turbulence import SingleLayerRun
+from gc_turbulence.turbulence import SingleLayerFrame
+from gc_turbulence.turbulence import SingleLayerRun
 
 
 # delete all cache
