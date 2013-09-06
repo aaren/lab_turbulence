@@ -1,4 +1,3 @@
-import sys
 import functools
 import os
 import errno
@@ -59,7 +58,7 @@ ProgressManager.register(typeid='ProgressUpdater',
                          exposed=['start', 'finish', 'update', 'currval'])
 
 
-def parallel_process(function, kwarglist, N, processors=None):
+def parallel_process(function, kwarglist, N=None, processors=None):
     """Parallelise execution of a function over a list of arguments.
 
     Inputs: function - function to apply
