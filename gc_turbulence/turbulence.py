@@ -23,9 +23,6 @@ class SingleLayerFrame(object):
         Inputs: fname - filename of a piv velocity text file
                 columns - {k: v} where k is the name to give the
                           data coming from the column given by v
-                keys - a dictionary of {k: v} where k is a header
-                       from the data file and v is the column it
-                       corresponds to.
                 quiver_format - the format of quiver file output
         """
         self.fname = fname
