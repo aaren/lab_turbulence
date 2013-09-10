@@ -7,8 +7,6 @@ if 'DISPLAY' not in os.environ:
     import matplotlib as mpl
     mpl.use('Agg')
 
-import matplotlib.pyplot as plt
-
 from util import parallel_process
 from util import parallel_stub
 from util import makedirs_p
@@ -222,7 +220,8 @@ class SingleLayerRun(object):
         """Initialisation to follow if we are not loading directly from
         the cache file."""
         f_re = "*{index}{rex}".format(index=self.index, rex=self.rex)
-        self.allfiles = sorted(glob.glob(os.path.join(self.data_dir, 'data', f_re)))
+        file_path = os.path.join(self.data_dir, 'data', f_re)
+        self.allfiles = sorted(glob.glob(file_path))
 
         if len(self.allfiles) == 0:
             raise UserWarning('No files found in data dir')
@@ -301,7 +300,9 @@ class SingleLayerRun(object):
         """Get the frames with multiprocessing.
         """
         kwargs = [dict(fname=f, columns=self.columns) for f in self.files]
-        frames = parallel_process(instantiateFrame, kwarglist=kwargs, processors=processors)
+        frames = parallel_process(instantiateFrame,
+                                  kwarglist=kwargs,
+                                  processors=processors)
         if type(frames) is not list:
             raise UserWarning('frames is not list!')
         # order based on filename

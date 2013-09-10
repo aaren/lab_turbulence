@@ -2,7 +2,6 @@ import os
 from nose.tools import *
 
 import numpy.testing as npt
-from scipy.misc import imread
 
 from ..gc_turbulence.turbulence import SingleLayerFrame
 from ..gc_turbulence.turbulence import SingleLayerRun
@@ -19,7 +18,8 @@ w_dir = 'tests/ex_data'
 
 run_kwargs = dict(data_dir=w_dir, index='3b4olxqo', rex='.000*')
 run = SingleLayerRun(**run_kwargs)
-stereo_run_kwargs = dict(data_dir=w_dir, index='3eodh6wx', rex='.00001*', stereo=True)
+stereo_run_kwargs = dict(data_dir=w_dir, index='3eodh6wx', rex='.00001*',
+                         stereo=True)
 stereo_run = SingleLayerRun(**stereo_run_kwargs)
 
 columns_2d = {'x': 0,
@@ -85,6 +85,7 @@ def test_save_run():
 def test_pickle_run_autosave():
     """When frames are loaded, run should save automatically."""
     #TODO: write me!
+
 
 def test_reload():
     run.reload()
