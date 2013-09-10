@@ -1,19 +1,10 @@
 from nose.tools import *
 
-from ..gc_turbulence.turbulence import SingleLayerFrame
+from ..gc_turbulence.turbulence import SingleLayerFrame, SingleLayerRun
 
 
-columns_2d = {'x': 0,
-              'z': 1,
-              'u': 6,
-              'w': 7}
-
-columns_3d = {'x': 2,
-              'z': 3,
-              'u': 4,
-              'v': 6,
-              'w': 5}
-
+columns_2d = SingleLayerRun.columns_2d
+columns_3d = SingleLayerRun.columns_3d
 
 csv_file = 'tests/ex_data/data/img.3b4olxqo.000500.csv'
 txt_file = 'tests/ex_data/data/Export.3atnh4dp.000500.txt'

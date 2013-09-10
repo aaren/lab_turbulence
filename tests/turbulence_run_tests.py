@@ -22,16 +22,8 @@ stereo_run_kwargs = dict(data_dir=w_dir, index='3eodh6wx', rex='.00001*',
                          stereo=True)
 stereo_run = SingleLayerRun(**stereo_run_kwargs)
 
-columns_2d = {'x': 0,
-              'z': 1,
-              'u': 6,
-              'w': 7}
-
-columns_3d = {'x': 2,
-              'z': 3,
-              'u': 4,
-              'v': 6,
-              'w': 5}
+columns_2d = SingleLayerRun.columns_2d
+columns_3d = SingleLayerRun.columns_3d
 
 
 def test_frames():
