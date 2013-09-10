@@ -325,8 +325,8 @@ class SingleLayerRun(object):
         repeatedly.
         """
         arrays = np.load(self.cache_path)
-        for v in arrays:
-            setattr(self, v, arrays[v])
+        for v in self.vectors:
+            setattr(self, v.upper(), arrays[v.upper()])
 
     def toggle_cache(self, what=None):
         """Toggle the state of run caching by changing the
