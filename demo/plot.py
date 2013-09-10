@@ -850,6 +850,9 @@ if __name__ == '__main__':
                              "plotting anything, give 'no_plot' as plot "
                              "argument",
                         action='store_true')
+    parser.add_argument("--stereo",
+                        help="specify stereo run",
+                        action='store_true')
     args = parser.parse_args()
 
     if not ('HOSTNAME' in os.environ) or (os.environ['HOSTNAME'] != 'doug-and-duck'):
@@ -873,6 +876,7 @@ if __name__ == '__main__':
                           'index':        run,
                           'parallel':     True,
                           'caching':      True,
+                          'stereo':       args.stereo,
                           'cache_reload': args.reload,
                           'limits':       run_lims[run]}
             pr = PlotRun(run, run_kwargs)
