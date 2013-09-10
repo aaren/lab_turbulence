@@ -433,7 +433,8 @@ class PlotRun(object):
         ax.set_ylabel('fourier period (s)')
 
         sig = self.U[20, 20, :]
-        wa = wavelets.WaveletAnalysis(sig, dt=0.01, wavelet=wavelets.Morlet())
+        wa = wavelets.WaveletAnalysis(sig, dt=0.01, wavelet=wavelets.Morlet(),
+                                      unbias=True)
 
         T, S = np.meshgrid(wa.time, wa.fourier_periods)
 
