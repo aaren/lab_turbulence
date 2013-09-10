@@ -56,8 +56,7 @@ default_plots = ['hovmoller',
                  'std_velocity_W',
                  'momentum_flux',
                  'mean_shear',
-                 'wavelet',
-                 'autocorrelation']
+                 'wavelet', ]
 
 # plots that are self contained (do their own axes composition)
 special_plots = ['power',
