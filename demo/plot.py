@@ -114,7 +114,7 @@ class PlotRun(object):
         self.front_velocity = 1 / self.tf[1]
 
         self.T_width = t_width
-        self.front_offset = -50
+        self.front_offset = -10
         self.Uf = self.reshape_to_current_relative(self.U)
         self.Wf = self.reshape_to_current_relative(self.W)
         self.Tf = self.reshape_to_current_relative(self.T)
