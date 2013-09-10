@@ -15,7 +15,6 @@ import argparse
 
 import numpy as np
 from scipy import stats
-from scipy import signal
 from scipy import ndimage as ndi
 import matplotlib as mpl
 mpl.use('Agg')
@@ -353,7 +352,7 @@ class PlotRun(object):
         f_freqs = np.resize(freqs, f_ps.shape)
 
         # histogram the power data
-        # http://stackoverflow.com/questions/10439961/efficiently-create-a-density-plot-for-high-density-regions-points-for-sparse-re
+        # http://stackoverflow.com/questions/10439961
         xlo, xhi = 0.1, 50
         ylo, yhi = 1E-5, 1E7
         res = 100
@@ -597,11 +596,11 @@ class PlotRun(object):
         U = self.r.U[:, 15:-15, :]
         T = range(U.shape[2])
         kwarglist = [dict(t=t,
-                        index=self.index,
-                        U=U,
-                        levels=self.levels,
-                        fname=self.time_slice_path(t))
-                   for t in T]
+                          index=self.index,
+                          U=U,
+                          levels=self.levels,
+                          fname=self.time_slice_path(t))
+                     for t in T]
         util.parallel_process(plot_time_slice, kwarglist=kwarglist)
 
     def plot_vertical_transects(self):
@@ -619,11 +618,11 @@ class PlotRun(object):
         # TODO: why is this X reversed? should get this from self?
         X = range(U.shape[1])[::-1]
         kwarglist = [dict(x=x,
-                        index=self.index,
-                        U=U,
-                        levels=self.levels,
-                        fname=self.vertical_transect_path(x))
-                   for x in X]
+                          index=self.index,
+                          U=U,
+                          levels=self.levels,
+                          fname=self.vertical_transect_path(x))
+                     for x in X]
         util.parallel_process(plot_vertical_transect, kwarglist=kwarglist)
 
     def time_slice_path(self, t):
@@ -651,7 +650,8 @@ class PlotRun(object):
         # TODO: remove nans by interpolation earlier on
         snapshots[np.where(np.isnan(snapshots))] = 0
 
-        modes, ritz_values, norms = mr.compute_DMD_matrices_snaps_method(snapshots, range(n_modes))
+        modes, ritz_values, norms \
+            = mr.compute_DMD_matrices_snaps_method(snapshots, range(n_modes))
 
         # as array, reshape to data dims
         reshaped_modes = modes.A.T.reshape((-1,) + UT.shape[:-1])
@@ -855,7 +855,8 @@ if __name__ == '__main__':
                         action='store_true')
     args = parser.parse_args()
 
-    if not ('HOSTNAME' in os.environ) or (os.environ['HOSTNAME'] != 'doug-and-duck'):
+    if not ('HOSTNAME' in os.environ) \
+       or (os.environ['HOSTNAME'] != 'doug-and-duck'):
         print "Not running on doug-and-duck, are you sure?"
         raw_input()
 
