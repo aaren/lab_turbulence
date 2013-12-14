@@ -75,9 +75,9 @@ class SingleLayerFrame(object):
         """Get the gridsize from a piv text file by filtering
         the metadata in the header.
         """
-        gridsize = self.header['GridSize']
-        x = gridsize.split(', ')[0][-2:]
-        z = gridsize.split(', ')[1][-3:-1]
+        gridsize = self.header['GridSize'].strip('{}')
+        x = gridsize.split(', ')[0].split('=')[1]
+        z = gridsize.split(', ')[1].split('=')[1]
         shape = (int(z), int(x))
         return shape
 
