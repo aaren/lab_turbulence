@@ -428,17 +428,29 @@ class PlotRun(object):
         return contourf
 
     def wavelet(self, ax):
-        ax.set_title('Wavelet analysis (morlet)')
-        ax.set_xlabel('time (s)')
-        ax.set_ylabel('fourier period (s)')
+        ax.set_title('Wavelet power spectrum (morlet)')
+        ax.set_xlabel('time after front passage (s)')
+        ax.set_ylabel('equivalent fourier frequency (Hz)')
 
         sig = self.U[20, 20, :]
         wa = wavelets.WaveletAnalysis(sig, dt=0.01, wavelet=wavelets.Morlet(),
                                       unbias=True)
 
-        T, S = np.meshgrid(wa.time, wa.fourier_periods)
+        fourier_freqs = 1 / wa.fourier_periods
+
+        T, S = np.meshgrid(wa.time, fourier_freqs)
 
         contourf = ax.contourf(T, S, wa.wavelet_power, 100)
+
+        # shade the region between the edge and coi
+        C, S = wa.coi
+        # fourier period
+        Fp = wa.fourier_period(S)
+        # fourier freqs
+        Ff = 1 / Fp
+        ff_min = fourier_freqs.min()
+        ax.fill_between(x=C, y1=Ff, y2=ff_min, color='gray', alpha=0.3)
+
         ax.set_yscale('log')
 
         return contourf
