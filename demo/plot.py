@@ -20,7 +20,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-import modred as mr
+# import modred as mr
 
 import wavelets
 
@@ -40,7 +40,8 @@ run_lims = {'3b4olxqo': (2200, 4400),
             '3bb5hsxk': (2400, 3600),
             '3bbn7639': (850, 2400),
             '3bc4rhc0': (1300, 3000),
-            '3hxlfmtp': (0, -1)}  # stereo run
+            '3hxlfmtp': (0, -1),  # stereo run
+            'r13_12_12c': (0, -1),}  # single camera of a stereo run
 
 
 # plots to create by default (based on function names in PlotRun)
