@@ -82,7 +82,6 @@ class SingleLayerFrame(object):
         return shape
 
     @property
-    # TODO: load this only once
     def data(self, delimiter=None):
         """Extract data from a PIV velocity text file.
 
@@ -92,6 +91,10 @@ class SingleLayerFrame(object):
 
         This is to be consistent with meteorological convention.
         """
+        # TODO: load this only once??
+        if hasattr(self, '_data'):
+            return self._data
+
         if not delimiter:
             # force determine delimiter
             if self.header['FileID'] == 'DSExport.CSV':
@@ -107,6 +110,8 @@ class SingleLayerFrame(object):
 
         # extract from given columns and reshape to sensible
         data = {k: D[:, self.columns[k]].reshape(shape) for k in self.columns}
+
+        self._data = data
         return data
 
 
@@ -272,6 +277,9 @@ class SingleLayerRun(object):
 
         self.nfiles = len(self.files)
         self.init_vectors()
+
+    def import_all(self):
+        """Load the the frames"""
 
     def init_vectors(self):
         """Set instance attributes that correspond to the data structures

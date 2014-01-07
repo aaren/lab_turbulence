@@ -1,0 +1,32 @@
+Do one thing and do it well.
+
+The thing here is data import.
+
+The thing being imported is lots of csv / tsv files that are output
+by Dynamic Studio.
+
+The format I want to store them in is .npz, numpy native format.
+
+This is like the current setup but with caching turned on always.
+
+
+# instantiate a run
+r = SingleLayerRun(some_metadata)
+
+# load all of the files and save as a .npz
+# will overwrite cache if it exists?
+r.import_all()
+
+# safer to have a specific reload command
+r.reload()
+# or
+r.import_all(reload=True)
+
+# load from the cache
+r.load()
+
+# access data in the run
+r.u, r.v, r.w, ...
+
+
+
