@@ -82,6 +82,7 @@ class SingleLayerFrame(object):
         return shape
 
     @property
+    # TODO: load this only once
     def data(self, delimiter=None):
         """Extract data from a PIV velocity text file.
 
@@ -137,6 +138,40 @@ class SingleLayerRun(object):
                   'z': 1,
                   'u': 6,
                   'w': 7}
+
+    # TODO: use explicit header names in data loading
+    # then we should just need something like this, with a mapping
+    # between what I want to call things and what they are called in
+    # the data files.
+    columns_2d = {'x': 'x',
+                  'z': 'y',
+                  'u': 'u',
+                  'w': 'v'}
+
+    names_2d = ('ix',        # horizontal index
+                'iy',        # vertical index
+                'x_pix',     # horizontal position (pixels)
+                'y_pix',     # vertical position (pixels)
+                'x',         # horizontal position (mm)
+                'y',         # vertical position (mm)
+                'u_pix',     # horizontal velocity (pixels / s)
+                'v_pix',     # vertical velocity (pixels / s)
+                'u',         # horizontal velocity (m / s)
+                'v',         # vertical velocity (m / s)
+                'mag',       # length (m / s)
+                'status',    # status code
+                )
+
+    names_3d = ('ix',        # horizontal index
+                'iy',        # vertical index
+                'x',         # horizontal position (mm)
+                'y',         # vertical position (mm)
+                'u',         # horizontal velocity (m / s)
+                'v',         # vertical velocity (m / s)
+                'w',         # perpendicular velocity (m / s)
+                'mag',       # length (m / s)
+                'status',    # status code
+                )
 
     # columns to select variables from for two camera run
     columns_3d = {'x': 2,
