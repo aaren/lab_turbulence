@@ -45,8 +45,14 @@ def test_shape_txt():
     assert_equal(txt_frame.shape, (68, 95))
 
 
+## Load the data to attributes of the frame
+csv_frame.init_data()
+txt_frame.init_data()
+stereo_frame.init_data()
+
+
 def test_data_read_csv():
-    x, z, u, w = csv_frame.x, csv_frame.z, csv_frame.u, csv_frame.w
+    x, z, u, w = csv_frame.ix, csv_frame.iz, csv_frame.u_pix, csv_frame.w_pix
     assert_equal(x[0, 0], 0)
     assert_equal(z[0, 0], 0)
     assert_almost_equal(u[0, 0], -0.137607544660568)
@@ -54,7 +60,7 @@ def test_data_read_csv():
 
 
 def test_data_read_txt():
-    x, z, u, w = txt_frame.x, txt_frame.z, txt_frame.u, txt_frame.w
+    x, z, u, w = txt_frame.ix, txt_frame.iz, txt_frame.u_pix, txt_frame.w_pix
     assert_equal(x[0, 0], 0)
     assert_equal(z[0, 0], 0)
     assert_almost_equal(u[0, 0], 0.400000005960464)
