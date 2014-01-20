@@ -1,0 +1,116 @@
+Do one thing and do it well.
+
+The thing here is data import.
+
+The thing being imported is lots of csv / tsv files that are output
+by Dynamic Studio.
+
+The format I want to store them in is .npz, numpy native format.
+
+This is like the current setup but with caching turned on always.
+
+
+```python
+# instantiate a run
+r = SingleLayerRun(some_metadata)
+
+# load all of the files and save as a .npz
+# will overwrite cache if it exists?
+r.import_all()
+
+# safer to have a specific reload command
+r.reload()
+# or
+r.import_all(reload=True)
+
+# load from the cache
+r.load()
+
+# access data in the run
+r.u, r.v, r.w, ...
+```
+
+
+
+
+Each run is multiple GB (~2-10) stored as ascii csv. This is reduced when
+stored as some binary format, but there are lots of runs (~20) to be processed
+at once. This is pushing the limits of RAM and some mapping to disk is needed.
+
+hdf5 is a widely used portable binary format. h5py is a simple python wrapper.
+
+hdf5 consists of *groups* and *datasets*.
+
+
+    Groups work like dictionaries, and datasets work like NumPy arrays
+
+
+Writing a new file is like this:
+
+```python
+import numpy as np
+import h5py
+
+h5file = h5py.File('testfile.hdf5', 'w')
+
+array = some_nd_array_of_data
+
+dset = h5file.create_dataset('data name', array.shape, dtype=array.dtype)
+dset[...] = array
+
+```
+
+
+So what we'll do is change the cache over to a hdf5 container and have a
+load_to_memory method on each run.
+
+From a new set of exported data we go something like this:
+
+```python
+r = SingleLayerRun()
+
+r.load_frames()          # load from text files to memory
+r.save_to_hdf5()  # can say r.import_to_hdf5() to do both
+
+# data access
+r.U  # returns the hdf5 view
+
+# load all hdf5 to memory
+r.load_to_memory()  # internally does something like r.U = r.U[...]
+
+```
+
+If there is already a hdf5 container in place then the run can access
+its attributes on instantiation, as a view to hdf5.
+
+We want to simplify caching as well.
+
+The biggest memory use will be in the import stage where the whole run will be
+kept in memory. This will be ~7GB, which is easily managable.
+
+
+The simplest way to implement is to alter the `save` and `load` methods
+of SingleLayerRun, so that they save to hdf5 and open hdf5.
+
+
+Now we have a series of runs that we want to import to hdf5:
+
+```python
+patterns = ['3mp0xba3',
+            '3mp0xzcv',
+            '3mp0yc8r',
+            '3mp0yq7a',
+            '3mp0z64p',
+            '3mp0zhhn',
+            '3mp0zwm6',
+            '3mp10bk1']
+
+working_dir = '/home/eeaol/lab/flume2/main_data'
+cache_dir = '/home/eeaol/lab/flume2/main_data/cache'
+
+for pattern in patterns:
+    data_dir = os.path.join(working_dir, pattern)
+    run = SingleLayerRun(data_dir=data_dir, cache_path=cache_dir, pattern=pattern)
+    run.load_frames()
+    run.save()
+```
