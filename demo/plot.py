@@ -103,7 +103,7 @@ class PlotRun(object):
         self.r = SingleLayerRun(**run_kwargs)
         # hack, remove the x at the edges
         # TODO: this should be done with masking somewhere # previously
-        for d in ('U', 'W', 'T'):
+        for d in ('u', 'w', 't'):
             arr = getattr(self.r, d)
             setattr(self, d, arr[:, 15:-15, :])
 
@@ -116,31 +116,31 @@ class PlotRun(object):
 
         self.T_width = t_width
         self.front_offset = -10
-        self.Uf = self.reshape_to_current_relative(self.U)
-        self.Wf = self.reshape_to_current_relative(self.W)
-        self.Tf = self.reshape_to_current_relative(self.T)
+        self.uf = self.reshape_to_current_relative(self.u)
+        self.wf = self.reshape_to_current_relative(self.w)
+        self.tf = self.reshape_to_current_relative(self.t)
 
         ## gradients
-        self.dUz, self.dUx, self.dUt = np.gradient(self.U)
-        self.dWz, self.dWx, self.dWt = np.gradient(self.W)
-        self.dUfz, self.dUfx, self.dUft = np.gradient(self.Uf)
-        self.dWfz, self.dWfx, self.dWft = np.gradient(self.Wf)
+        self.duz, self.dux, self.dut = np.gradient(self.u)
+        self.dwz, self.dwx, self.dwt = np.gradient(self.w)
+        self.dufz, self.dufx, self.duft = np.gradient(self.uf)
+        self.dwfz, self.dwfx, self.dwft = np.gradient(self.wf)
 
         ## reynolds decomposition, u = u_ + u'
         # mean_flow
-        self.Uf_ = self.mean_f(self.Uf)
-        self.Wf_ = self.mean_f(self.Wf)
+        self.uf_ = self.mean_f(self.uf)
+        self.wf_ = self.mean_f(self.wf)
         # perturbation (zero mean)
-        self.Ufp = self.Uf - np.expand_dims(self.Uf_, 1)
-        self.Wfp = self.Wf - np.expand_dims(self.Wf_, 1)
+        self.ufp = self.uf - np.expand_dims(self.uf_, 1)
+        self.wfp = self.wf - np.expand_dims(self.wf_, 1)
 
         ## derived properties
         # absolute velocity
-        self.uf_abs = np.hypot(self.Uf, self.Wf)
+        self.uf_abs = np.hypot(self.uf, self.wf)
         # vorticity
-        self.vorticity = self.dWfx - self.dUfz
+        self.vorticity = self.dwfx - self.dufz
         # vertical absolute velocity shear
-        self.vertical_shear = np.hypot(self.dUfz, self.dWfz)
+        self.vertical_shear = np.hypot(self.dufz, self.dwfz)
 
         # ranges for plotting
         self.u_range = (-10, 5)
@@ -158,17 +158,17 @@ class PlotRun(object):
     def properties(self):
         """Define properties of quantities. Used in plotting to give a
         string to put in title, axes labels etc."""
-        return {'U':  {'name': 'streamwise velocity',
+        return {'u':  {'name': 'streamwise velocity',
                        'range': self.u_range},
-                'Uf': {'name': 'streamwise velocity',
+                'uf': {'name': 'streamwise velocity',
                        'range': self.u_range},
-                'W':  {'name': 'vertical velocity',
+                'w':  {'name': 'vertical velocity',
                        'range': self.w_range},
-                'Wf':  {'name': 'vertical velocity',
+                'wf':  {'name': 'vertical velocity',
                         'range': self.w_range},
-                'Uf_': {'name': 'mean streamwise velocity',
+                'uf_': {'name': 'mean streamwise velocity',
                         'range': self.u_range},
-                'Wf_': {'name': 'mean vertical velocity',
+                'wf_': {'name': 'mean vertical velocity',
                         'range': self.w_range},
                 'uf_abs': {'name': 'absolute velocity',
                            'range': self.u_abs_range},
@@ -208,11 +208,11 @@ class PlotRun(object):
         # tf is the time of front passage as f(x), i.e. supply this
         # with an argument in x and we get the corresponding time
         # reshape, taking a constant T time intervals behind front
-        T0 = self.front_offset
-        T1 = self.T_width
+        t0 = self.front_offset
+        t1 = self.T_width
         tf = self.tf
         X = np.indices((vel.shape[1],)).squeeze()
-        U_ = np.dstack(vel[:, x, int(tf(x)) + T0:int(tf(x)) + T1] for x in X)
+        U_ = np.dstack(vel[:, x, int(tf(x)) + t0:int(tf(x)) + t1] for x in X)
         # reshape this to same dimensions as before
         Uf = np.transpose(U_, (0, 2, 1))
         # TODO: does axis 2 of Uf need to be reversed?
@@ -274,7 +274,7 @@ class PlotRun(object):
         return contourf
 
     def mean_velocity_Uf(self, ax):
-        mean_Uf = self.mean_f(self.Uf)
+        mean_Uf = self.mean_f(self.uf)
         contourf = ax.contourf(mean_Uf, self.levels)
         ax.set_title('Time averaged streamwise velocity')
         ax.set_xlabel('time after front passage')
@@ -282,7 +282,7 @@ class PlotRun(object):
         return contourf
 
     def mean_velocity_Wf(self, ax):
-        mean_Wf = self.mean_f(self.Wf)
+        mean_Wf = self.mean_f(self.wf)
         contourf = ax.contourf(mean_Wf, self.levels_w)
         ax.set_title('Time averaged vertical velocity')
         ax.set_xlabel('time after front passage')
@@ -306,7 +306,7 @@ class PlotRun(object):
         return contourf
 
     def std_velocity_U(self, ax):
-        std_Uf = self.rms_f(self.Uf)
+        std_Uf = self.rms_f(self.uf)
         contourf = ax.contourf(std_Uf, levels=np.linspace(0, 2, 100))
         ax.set_title('rms streamwise velocity')
         ax.set_xlabel('horizontal')
@@ -314,7 +314,7 @@ class PlotRun(object):
         return contourf
 
     def std_velocity_W(self, ax):
-        std_Wf = self.rms_f(self.Wf)
+        std_Wf = self.rms_f(self.wf)
         contourf = ax.contourf(std_Wf, levels=np.linspace(0, 2, 100))
         ax.set_title('rms vertical velocity')
         ax.set_xlabel('horizontal')
@@ -322,7 +322,7 @@ class PlotRun(object):
         return contourf
 
     def momentum_flux(self, ax):
-        uw = self.Ufp * self.Wfp
+        uw = self.ufp * self.wfp
         uw_ = np.abs(self.mean_f(uw))
         contourf = ax.contourf(uw_, 100)
         ax.set_title('momentum flux')
@@ -331,9 +331,9 @@ class PlotRun(object):
         return contourf
 
     def power_spectrum(self, ax):
-        times = self.Tf
+        times = self.tf
         # limit to bottom half of domain
-        U = self.Uf
+        U = self.uf
         half = U.shape[1] / 2
         U = U[:, :half, :]
         # compute fft over time
@@ -396,10 +396,10 @@ class PlotRun(object):
     def fft_U(self, ax):
         # limit to bottom half of domain
         ax.set_title('domain fft')
-        U = self.Uf
+        U = self.uf
         half = U.shape[1] / 2
         U = U[:, :half, :]
-        times = self.Tf
+        times = self.tf
         # compute fft over time
         fft_U = np.fft.fft(U, axis=2)
         freqs = np.fft.fftfreq(times.shape[-1], d=0.01)
@@ -433,7 +433,7 @@ class PlotRun(object):
         ax.set_xlabel('time after front passage (s)')
         ax.set_ylabel('equivalent fourier frequency (Hz)')
 
-        sig = self.U[20, 20, :]
+        sig = self.u[20, 20, :]
         wa = wavelets.WaveletAnalysis(sig, dt=0.01, wavelet=wavelets.Morlet(),
                                       unbias=True)
 
@@ -468,7 +468,7 @@ class PlotRun(object):
         """
         zoom_factor = (0.5, 0.05)
         # TODO: proper x, z
-        Z, X = np.indices(self.Uf_.shape)
+        Z, X = np.indices(self.uf_.shape)
 
         # TODO: are the velocities going at the middle of their grid?
         # NB. these are not averages. ndi.zoom makes a spline and
@@ -477,8 +477,8 @@ class PlotRun(object):
         # both are valid approaches
         Xr = ndi.zoom(X, zoom_factor)
         Zr = ndi.zoom(Z, zoom_factor)
-        Uf_r = ndi.zoom(self.Uf_, zoom_factor)
-        Wf_r = ndi.zoom(self.Wf_, zoom_factor)
+        Uf_r = ndi.zoom(self.uf_, zoom_factor)
+        Wf_r = ndi.zoom(self.wf_, zoom_factor)
 
         ax.quiver(Xr, Zr, Uf_r, Wf_r, scale=100)
 
@@ -496,15 +496,15 @@ class PlotRun(object):
         ax_avg.axhline(zi, linewidth=2, color='black')
 
         ax_U.set_title('Hovmoller of streamwise velocity')
-        hovmoller_U = self.hovmoller(ax_U, quantity=self.U)
+        hovmoller_U = self.hovmoller(ax_U, quantity=self.u)
         # over plot line of detected front passage
         # FIXME: this x should be from self
-        x = np.indices((self.U.shape[1],)).squeeze()
+        x = np.indices((self.u.shape[1],)).squeeze()
         tf = self.tf
         ax_U.plot(tf(x), x, label='detected front')
 
         ax_U.set_title('Hovmoller of shifted streamwise velocity')
-        self.hovmoller(ax_Uf, quantity=self.Uf)
+        self.hovmoller(ax_Uf, quantity=self.uf)
         # over plot line of detected front passage
         ax_Uf.axvline(-self.front_offset, label='detected front')
 
@@ -546,7 +546,7 @@ class PlotRun(object):
         the mean front relative frame.
         """
         fig, ax = plt.subplots()
-        U = stats.nanmean(self.Uf, axis=1)
+        U = stats.nanmean(self.uf, axis=1)
         # correlate two 1d arrays
         # np.correlate(U, U, mode='full')[len(U) - 1:]
         # but we want to autocorrelate a 2d array over a given
@@ -606,7 +606,7 @@ class PlotRun(object):
         If we make a plots over all of the possible vertical profiles,
         we end up with a series of plots that can be animated.
         """
-        U = self.r.U[:, 15:-15, :]
+        U = self.r.u[:, 15:-15, :]
         T = range(U.shape[2])
         kwarglist = [dict(t=t,
                           index=self.index,
@@ -627,7 +627,7 @@ class PlotRun(object):
         If we make a plots over all of the possible vertical profiles,
         we end up with a series of plots that can be animated.
         """
-        U = self.Uf
+        U = self.uf
         # TODO: why is this X reversed? should get this from self?
         X = range(U.shape[1])[::-1]
         kwarglist = [dict(x=x,
@@ -651,7 +651,7 @@ class PlotRun(object):
     def plot_dmd(self):
         """Dynamic mode decomposition, using Uf as the series of vectors."""
         n_modes = 10
-        U = self.Uf
+        U = self.uf
         # put the decomposition axis last
         UT = U.transpose(0, 2, 1)
         # create the matrix of snapshots by flattening the non
