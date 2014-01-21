@@ -409,7 +409,11 @@ class SingleLayerRun(object):
             raise UserWarning('No valid cache file found!')
 
         if hasattr(self, 'h5file'):
-            self.h5file.close()
+            try:
+                self.h5file.close()
+            except ValueError:
+                # case file already closed
+                pass
 
         self.h5file = h5py.File(self.cache_path, 'r')
         for v in self.vectors.names:
