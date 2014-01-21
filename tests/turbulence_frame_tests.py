@@ -77,12 +77,12 @@ def test_data_read_stereo():
     v = stereo_frame.v
     w = stereo_frame.w
 
-    assert_equal(x[50, 50], 20.2136267196845)
-    assert_equal(z[50, 50], 39.0232063188143)
+    nt.assert_allclose(x[50, 50], 20.2136267196845)
+    nt.assert_allclose(z[50, 50], 39.0232063188143)
 
-    assert_almost_equal(u[50, 50], 0.00388681469485164)
-    assert_almost_equal(w[50, 50], -0.00251218792982399)
-    assert_almost_equal(v[50, 50], 0.00109881022945046)
+    nt.assert_allclose(u[50, 50], 0.00388681469485164)
+    nt.assert_allclose(w[50, 50], -0.00251218792982399)
+    nt.assert_allclose(v[50, 50], 0.00109881022945046)
 
 
 def test_timestamp_csv():

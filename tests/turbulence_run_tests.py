@@ -48,7 +48,7 @@ def test_load():
 
 def test_import_run():
     """Can we import from text files?"""
-    stereo_run.cache_path = os.path.join(cache_test)
+    stereo_run.cache_path = cache_test
     stereo_run.import_to_hdf5()
     print stereo_run.valid_cache_exists
     print stereo_run.cache_path
