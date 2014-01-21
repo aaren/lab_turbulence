@@ -13,18 +13,37 @@ from util import parallel_process
 from util import parallel_stub
 
 
+def get_timestamp(fname):
+    """For a Dynamic Studio export file, find the line in the header
+    that contains the timestamp and extract it.
+
+    Returns the timestamp as a np.float32
+
+    If no timestamp is found, raises ValueError.
+    """
+    with open(fname) as f:
+        for i, line in enumerate(f):
+            if 'TimeStamp' in line:
+                timestamp = np.float32(line.split(':')[1].split('\r')[0])
+                return timestamp
+            elif 'CONTENT' in line:
+                raise ValueError("No timestamp in header.""")
+
+
 @parallel_stub
 def file_to_array(fname, dtype, skip_header, delimiter=None):
-    """Extract file to recarray using numpy genfromtxt.
+    """Extract file to recarray using numpy loadtxt and
+    pull out the timestamp from the file.
 
-    Simple wrapper for genfromtxt to allow multiprocessing with
-    progress bar.
+    Returns a tuple (t, D), where t is the timestamp (float)
+    and D is the recarray from np.loadtxt.
     """
+    t = get_timestamp(fname)
     D = np.loadtxt(fname,
                    dtype=dtype,
                    skiprows=skip_header,
                    delimiter=delimiter,)
-    return D
+    return t, D
 
 
 class SingleLayerFrame(object):
@@ -322,14 +341,11 @@ class SingleLayerRun(object):
         if os.path.exists(cache_path):
             os.remove(cache_path)
 
-        # extract the data from the text files
-        data = self.get_data(processors=processors)
-
-        # extract the timestamps and create array
+        # extract the sorted data, timestamps and create array
         # you might be tempted to try and merge / append some
         # recarrays. This is a needless waste of time if you
         # just want to import to hdf5.
-        timestamps = self.get_timestamps()
+        timestamps, data = self.get_data(processors=processors)
         time = np.ones(data.shape) * timestamps
 
         # pre allocate the space in the h5 file
@@ -359,27 +375,25 @@ class SingleLayerRun(object):
                           delimiter=delimiter,
                           fname=fname) for fname in self.files]
 
-        data = np.dstack(parallel_process(file_to_array,
-                                          kwarglist=kwarglist,
-                                          processors=processors))
+        # parallel_process returns an unsorted list so we need to
+        # sort by time
+        timestamps, data = zip(*parallel_process(file_to_array,
+                                                 kwarglist=kwarglist,
+                                                 processors=processors))
+        data = np.dstack(data)
+        timestamps = np.array(timestamps)
+
         sz, sx = f0.shape
         rdata = data.T.reshape((-1, sz, sx)).transpose((1, 2, 0))
-        return rdata
 
-    @staticmethod
-    def get_timestamp(fname):
-        with open(fname) as f:
-            while True:
-                line = f.readline()
-                if 'TimeStamp' in line:
-                    break
-                elif 'CONTENT' in line:
-                    print "No timestamp in header."
-        timestamp = float(line.split(':')[1].split('\r')[0])
-        return timestamp
+        sorted_by_time = timestamps.argsort()
+        sorted_data = rdata[:, :, sorted_by_time]
+        sorted_timestamps = timestamps[sorted_by_time]
+
+        return sorted_timestamps, sorted_data
 
     def get_timestamps(self):
-        timestamps = np.array([self.get_timestamp(f) for f in self.files])
+        timestamps = np.array([get_timestamp(f) for f in self.files])
         return timestamps
 
     def load(self):
