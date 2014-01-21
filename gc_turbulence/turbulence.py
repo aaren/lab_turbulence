@@ -3,7 +3,6 @@ import glob
 
 import numpy as np
 import h5py
-import scipy.ndimage as ndi
 
 if 'DISPLAY' not in os.environ:
     import matplotlib as mpl

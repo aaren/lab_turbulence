@@ -2,7 +2,7 @@ import sys
 import glob
 import os
 
-from gc_turbulence.gc_turbulence.turbulence import SingleLayerRun
+from gc_turbulence import SingleLayerRun
 
 
 working_dir = '/home/eeaol/lab/data/flume2/main_data'

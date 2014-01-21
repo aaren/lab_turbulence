@@ -24,8 +24,8 @@ import matplotlib.pyplot as plt
 
 import wavelets
 
-from gc_turbulence.gc_turbulence.turbulence import SingleLayerRun
-import gc_turbulence.gc_turbulence.util as util
+from gc_turbulence import SingleLayerRun
+from gc_turbulence import util
 
 
 w_dir = '/home/eeaol/lab/data/flume2/'

@@ -5,8 +5,8 @@ import numpy.testing as npt
 import numpy
 import h5py
 
-from gc_turbulence.turbulence import SingleLayerFrame
-from gc_turbulence.turbulence import SingleLayerRun
+from gc_turbulence import SingleLayerFrame
+from gc_turbulence import SingleLayerRun
 
 
 # delete all cache

@@ -1,8 +1,9 @@
 from nose.tools import *
+import numpy.testing as nt
 
 import numpy as np
 
-from gc_turbulence.turbulence import SingleLayerFrame, SingleLayerRun
+from gc_turbulence import SingleLayerFrame, SingleLayerRun
 
 
 columns_2d = np.dtype(SingleLayerRun.columns_2d)
