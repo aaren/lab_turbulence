@@ -611,3 +611,176 @@ class AnalysisRun(object):
         # evolution of the front
         # Uf = Uf[:,:,::-1]
         return Uf
+
+
+class PreProcessor(object):
+    """Apply basic pre processing to raw Dynamic Studio output to make
+    it usable in analysis.
+
+    Stages:
+
+        - transform X, Z to lock / base relative.
+        - extract valid region
+        - transform to front relative coordinates
+        - interpolation of zero values (replace with nan?)
+        - write to hdf5
+    """
+    # The origin of the coordinate system (centre of the
+    # calibration target) is 105mm from the base of the tank
+    # and 3250mm from the back of the lock.
+    # Coordinates are x positive downstream (away from the lock)
+    # and z positive upwards (away from the base).
+    horizontal_offset = 3.250
+    vertical_offset = 0.105
+
+    # In the calibration coordinate system, the valid region
+    # is a rectangle with lower left (-0.06, -0.10) and upper
+    # right (0.10, 0.02).
+    valid_xlim = (-0.075, 0.085)
+    valid_ylim = (-0.10, 0.02)
+
+    def __init__(self, run):
+        self.run = run
+
+        # get the x and z coords
+        self.X = run.x[:, :, 0]
+        self.Z = run.z[:, :, 0]
+        self.T = run.t[0, 0, :]
+
+    ## TODO: specify order in which these methods must be run.
+    def transform_to_lock_relative(self):
+        """This method changes the X and Z coordinates such that
+        they have their origin at the lock gate and the base of
+        the tank, respectively.
+        """
+        self.X = self.X + self.horizontal_offset
+        self.Z = self.Z + self.vertical_offset
+
+    def extract_valid_region(self):
+        """Extract the valid data region from the run and
+        make it available.
+
+        In the transformed system
+        """
+        valid = self.compute_valid_slice()
+
+        r = self.run
+
+        self.X = r.x[valid]
+        self.Z = r.z[valid]
+        self.T = r.t[valid]
+        self.U = r.u[valid]
+        self.V = r.v[valid]
+        self.W = r.w[valid]
+
+    def compute_valid_slice(self):
+        """Determine the slice to be used to pull out the valid
+        region."""
+        # find the indices that correspond to the rectangular view
+        # that we are going to take into the data
+        x_min, x_max = self.valid_region_xlim
+        z_min, z_max = self.valid_region_ylim
+
+        X, Z = self.X, self.Z
+
+        valid = (X > x_min) & (X < x_max) & (Z > z_min) & (Z < z_max)
+        iz, ix = np.where(valid)
+
+        ix_min, ix_max = ix.min(), ix.max()
+        iz_min, iz_max = iz.min(), iz.max()
+
+        # valid region in x, z
+        valid_slice = np.s_[iz_min: iz_max, ix_min: ix_max, :]
+
+        return valid_slice
+
+    def detect_front(self):
+        """Detect the trajectory of the gravity current front
+        in space and time.
+
+        Takes the column average of the vertical velocity and
+        searches for the first time at which this exceeds a
+        threshold.
+        """
+        threshold = 0.01  # m / s
+        column_avg = self.W.mean(axis=0)
+        exceed = column_avg > threshold
+        # find first occurence of exceeding threshold
+        front_it = np.argmax(exceed, axis=1)
+        front_ix = np.indices(front_it.shape).squeeze()
+
+        front_space = self.X[front_ix, front_it]
+        front_time = self.T[front_ix, front_it]
+        return front_space, front_time
+
+    def transform_to_front_relative(self):
+        """Transform the data into coordinates relative to the
+        position of the gravity current front.
+
+        Implementation takes advantage of regular rectangular data
+        and uses map_coordinates.
+        """
+        front_space, front_time = self.detect_front()
+
+        # get the real start time of the data and the
+        # sampling distance in time (dt)
+        rt = self.T[0, 0, :]
+        dt = rt[1] - rt[0]
+
+        ## compute the times at which to sample the *front relative*
+        ## data, if it already existed as a 3d rectangular array (which it
+        ## doesn't!). The other way to do it would be to compute the
+        ## necessary sample indices first and then index the r.t array.
+        ## You shouldn't do it that way because the coords can be negative
+        ## floats and map_coordinates will handle that properly.
+        #
+        # start and end times (s) relative to front passage
+        t0 = -5
+        t1 = 20
+        relative_sample_times = np.arange(t0, t1, dt)
+        # extend over x and z
+        sz, sx, = self.T.shape[:2]
+        relative_sample_times = np.tile(relative_sample_times, (sz, sx, 1))
+
+        ## now compute the times at which we need to sample the
+        ## original data to get front relative data by adding
+        ## the time of front passage* onto the relative sampling times
+        ## *(as a function of x)
+        rtf = front_time[None, ..., None] + relative_sample_times
+
+        # grid coordinates of the sampling times
+        # (has to be relative to what the time is at
+        # the start of the data).
+        t_coords = (rtf - rt[0]) / dt
+
+        # z and x coords are the same as before
+        zx_coords = np.indices(t_coords.shape)[:2]
+
+        # required shape of the coordinates array is
+        # (3, rz.size, rx.size, rt.size)
+        coords = np.concatenate((zx_coords, t_coords[None]), axis=0)
+
+        st = t_coords.shape[-1]
+        self.X_ = self.X[:, :, 0, None].repeat(st, axis=-1)
+        self.Z_ = self.Z[:, :, 0, None].repeat(st, axis=-1)
+        self.T_ = relative_sample_times
+        self.W_ = ndi.map_coordinates(self.W, coords)
+
+        # N.B. there is an assumption here that r.t, r.z and r.x are
+        # 3d arrays. They are redundant in that they repeat over 2 of
+        # their axes (r.z, r.x, r.t = np.meshgrid(z, x, t, indexing='ij'))
+
+    def interpolate_zeroes(self):
+        """The raw data contains regions with velocity identical
+        to zero. These are non physical and can be removed by
+        interpolation.
+        """
+
+    def write_data(self):
+        """Save everything to a new hdf5."""
+
+
+class NonDimensionaliser(object):
+    """Take a run and non dimensionalise it, re-mapping the data to
+    a standard regular grid.
+    """
