@@ -636,18 +636,19 @@ class PreProcessor(object):
     # In the calibration coordinate system, the valid region
     # is a rectangle with lower left (-0.06, -0.10) and upper
     # right (0.10, 0.02).
-    valid_xlim = (-0.075, 0.085)
-    valid_ylim = (-0.10, 0.02)
+    valid_region_xlim = (-0.075, 0.085)
+    valid_region_ylim = (-0.10, 0.02)
 
     def __init__(self, run):
         self.run = run
 
-        # get the x and z coords
-        self.X = run.x[:, :, 0]
-        self.Z = run.z[:, :, 0]
-        self.T = run.t[0, 0, :]
-
     ## TODO: specify order in which these methods must be run.
+    def execute(self):
+        self.extract_valid_region()
+        self.interpolate_zeroes()
+        self.transform_to_lock_relative()
+        self.transform_to_front_relative()
+
     def transform_to_lock_relative(self):
         """This method changes the X and Z coordinates such that
         they have their origin at the lock gate and the base of
@@ -658,16 +659,14 @@ class PreProcessor(object):
 
     def extract_valid_region(self):
         """Extract the valid data region from the run and
-        make it available.
-
-        In the transformed system
+        convert to SI units.
         """
         valid = self.compute_valid_slice()
 
         r = self.run
 
-        self.X = r.x[valid]
-        self.Z = r.z[valid]
+        self.X = r.x[valid] / 1000
+        self.Z = r.z[valid] / 1000
         self.T = r.t[valid]
         self.U = r.u[valid]
         self.V = r.v[valid]
@@ -681,7 +680,8 @@ class PreProcessor(object):
         x_min, x_max = self.valid_region_xlim
         z_min, z_max = self.valid_region_ylim
 
-        X, Z = self.X, self.Z
+        X = self.run.x[:, :, 0] / 1000
+        Z = self.run.z[:, :, 0] / 1000
 
         valid = (X > x_min) & (X < x_max) & (Z > z_min) & (Z < z_max)
         iz, ix = np.where(valid)
@@ -709,8 +709,9 @@ class PreProcessor(object):
         front_it = np.argmax(exceed, axis=1)
         front_ix = np.indices(front_it.shape).squeeze()
 
-        front_space = self.X[front_ix, front_it]
-        front_time = self.T[front_ix, front_it]
+        front_space = self.X[0][front_ix, front_it]
+        front_time = self.T[0][front_ix, front_it]
+
         return front_space, front_time
 
     def transform_to_front_relative(self):
@@ -775,6 +776,7 @@ class PreProcessor(object):
         to zero. These are non physical and can be removed by
         interpolation.
         """
+        # TODO: write me!
 
     def write_data(self):
         """Save everything to a new hdf5."""
