@@ -639,8 +639,16 @@ class PreProcessor(object):
     valid_region_xlim = (-0.075, 0.085)
     valid_region_ylim = (-0.10, 0.02)
 
+    # the names of the attributes that an instance should have
+    # after running self.execute()
+    vectors = ['X', 'Z', 'T',     # coordinate
+               'U', 'V', 'W',     # values
+               'X_', 'Z_', 'T_',  # front relative coordinates
+               'U_', 'V_', 'W_']  # front relative data
+
     def __init__(self, run):
         self.run = run
+        self.has_executed = False
 
     ## TODO: specify order in which these methods must be run.
     def execute(self):
@@ -648,6 +656,7 @@ class PreProcessor(object):
         self.interpolate_zeroes()
         self.transform_to_lock_relative()
         self.transform_to_front_relative()
+        self.has_executed = True
 
     def transform_to_lock_relative(self):
         """This method changes the X and Z coordinates such that
@@ -765,6 +774,9 @@ class PreProcessor(object):
         self.X_ = self.X[:, :, 0, None].repeat(st, axis=-1)
         self.Z_ = self.Z[:, :, 0, None].repeat(st, axis=-1)
         self.T_ = relative_sample_times
+
+        self.U_ = ndi.map_coordinates(self.U, coords)
+        self.V_ = ndi.map_coordinates(self.V, coords)
         self.W_ = ndi.map_coordinates(self.W, coords)
 
         # N.B. there is an assumption here that r.t, r.z and r.x are
@@ -780,9 +792,101 @@ class PreProcessor(object):
 
     def write_data(self):
         """Save everything to a new hdf5."""
+        if not self.has_executed:
+            print "Data has not been processed! Not writing."
+            return
+
+        raw_cache = self.run.cache_path
+        raw_root, ext = os.path.splitext(raw_cache)
+
+        pro_root = raw_root + '_processed'
+        cache_path = pro_root + ext
+
+        makedirs_p(os.path.dirname(cache_path))
+        # delete if a file exists. h5py sometimes complains otherwise.
+        if hasattr(self, 'h5file'):
+            self.h5file.close()
+        if os.path.exists(cache_path):
+            os.remove(cache_path)
+
+        h5file = h5py.File(cache_path, 'w')
+
+        for vector in self.vectors:
+            data = getattr(self, vector)
+            h5file.create_dataset(vector, data.shape, dtype=data.dtype)
+            h5file[vector][...] = data
+
+        h5file.close()
 
 
 class NonDimensionaliser(object):
     """Take a run and non dimensionalise it, re-mapping the data to
     a standard regular grid.
     """
+
+
+class ProcessedRun(object):
+    """Wrapper around a run that has had its data quality controlled."""
+    # attribute names that the data will have when loaded from the
+    # hdf5
+    vectors = PreProcessor.vectors
+
+    def __init__(self, cache_path=None):
+        self.cache_path = cache_path
+        if self.cache_path:
+            self.init_cache(self.cache_path)
+
+    @property
+    def valid_cache_exists(self):
+        if not hasattr(self, 'cache_path') or not self.cache_path:
+            return False
+        else:
+            return h5py.is_hdf5(self.cache_path)
+
+    def init_cache(self, cache_path):
+        """Determine the cache_path and load if exists."""
+        if os.path.isdir(cache_path):
+            cache_fname = '{}.hdf5'.format(self.pattern)
+            self.cache_path = os.path.join(cache_path, cache_fname)
+
+        elif os.path.isfile(cache_path):
+            self.cache_path = cache_path
+
+        elif not os.path.exists(cache_path):
+            self.cache_path = cache_path
+
+        else:
+            raise Warning('Something went wrong')
+
+    def load(self):
+        """Load run arrays from disk.
+
+        Useful to avoid re-extracting the velocity data
+        repeatedly.
+
+        If the cache_path is not valid hdf5 or does not exist,
+        raise UserWarning.
+        """
+        if not self.valid_cache_exists:
+            raise UserWarning('No valid cache file found!')
+
+        if hasattr(self, 'h5file'):
+            try:
+                self.h5file.close()
+            except ValueError:
+                # case file already closed
+                pass
+
+        self.h5file = h5py.File(self.cache_path, 'r')
+        for v in self.vectors:
+            setattr(self, v, self.h5file[v])
+
+    def load_to_memory(self):
+        """Load all of the vectors to memory. Careful! This can be
+        O(10GB).
+
+        You probably don't actually need to use this method as
+        h5py caches in memory.
+        """
+        for v in self.vectors.names:
+            setattr(self, v, getattr(self, v)[...])
