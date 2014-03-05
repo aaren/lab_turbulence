@@ -52,7 +52,7 @@ class SingleLayerFrame(object):
     """Each SingleLayerRun is comprised of a series of frames.
     This class represents one of the frames.
     """
-    def __init__(self, fname, columns, delimiter=None):
+    def __init__(self, fname, columns=None, delimiter=None):
         """Initialise a frame object.
 
         Inputs: fname - filename of a piv velocity text file
