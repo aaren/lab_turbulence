@@ -1,14 +1,14 @@
 import os
 import glob
 
+if 'DISPLAY' not in os.environ:
+    import matplotlib as mpl
+    mpl.use('Agg')
+
 import numpy as np
 import h5py
 import scipy.ndimage as ndi
 from matplotlib.pyplot import imread
-
-if 'DISPLAY' not in os.environ:
-    import matplotlib as mpl
-    mpl.use('Agg')
 
 from util import makedirs_p
 from util import parallel_process
