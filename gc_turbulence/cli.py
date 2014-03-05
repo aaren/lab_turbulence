@@ -15,10 +15,14 @@ def cli():
     parser.add_argument('files', nargs='+',
                         help="Pattern to match to exectute command on.")
 
-    args = parser.parse_args()
-
+    args, remainder = parser.parse_known_args()
     commander = Commander(args.files)
-    getattr(commander, args.command)()
+
+    if len(remainder) > 0:
+        getattr(commander, args.command)(remainder)
+
+    else:
+        getattr(commander, args.command)()
 
 
 class Commander(object):
@@ -31,53 +35,69 @@ class Commander(object):
 
     def rename(self):
         """Change folder names from run hash to run index."""
-        rename(self.items)
+        renamer = Renamer()
+        hash_directories = [d for d in self.items if renamer.is_pattern_dir(d)]
 
-    def import_to_hdf5(self):
+        for each in hash_directories:
+            renamer.rename(each)
+
+    def import_to_hdf5(self, args=None):
         """Import the raw data from each folder to hdf5."""
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--rex', default=None,
+                            help="regular expression to match files")
+        parser.add_argument('--pattern', default='*',
+                            help="regular expression to match files")
+        args = parser.parse_args(args)
+
         for item in self.items:
-            pattern = os.path.basename(run_dir)
-            run = SingleLayerRun(cache_path=cache_dir,
-                                 pattern=pattern,
-                                 rex=rex)
-            run.import_to_hdf5()
+            # pattern = os.path.basename(item)
+            cache_path = 'cache/{}.hdf5'.format(args.pattern)
+            run = SingleLayerRun(data_dir=item,
+                                 cache_path=cache_path,
+                                 pattern=args.pattern,
+                                 rex=args.rex)
+            run.init_load_frames()
+            print run.nfiles
+            # run.import_to_hdf5()
 
 
-run_index_pattern = \
-    re.compile('.*(?P<index>r1[0-9]_[0-9]{2}_[0-9]{2}[a-z]).*')
-
-
-def rename(directories):
-    hash_directories = [d for d in directories
-                        if not run_index_pattern.match(d)]
+class Renamer(object):
+    """Collection of tools for renaming runs."""
+    run_index_pattern = \
+        re.compile('.*(?P<index>r1[0-9]_[0-9]{2}_[0-9]{2}[a-z]).*')
 
     file_format = 'stereo.{}.000001.csv'.format
 
-    first_files = [os.path.join(hash, file_format(hash)) for hash
-                                                        in hash_directories]
+    def is_pattern_dir(self, directory):
+        if self.run_index_pattern.match(directory):
+            return True
+        else:
+            return False
 
-    indices = [get_index_from_file(f) for f in first_files]
-
-    for hashd, run_index in zip(hash_directories, indices):
+    def rename(self, directory):
+        """Rename """
+        hash = os.path.basename(directory)
+        first_file = os.path.join(hash, file_format(hash))
+        run_index = self.get_index_from_file(first_file)
         if run_index:
-            index_name = os.path.join(os.path.dirname(hashd), run_index)
+            index_name = os.path.join(os.path.dirname(directory), run_index)
             print "rename: {} --> {}".format(hashd, index_name)
             # os.rename(hashd, index_name)
         else:
             pass
 
+    def get_index_from_file(self, filename):
+        """Determine the run index from a Dynamic Studio export file."""
+        try:
+            f = SingleLayerFrame(filename)
+        except IOError, TypeError:
+            return None
 
-def get_index_from_file(filename):
-    """Determine the run index from a Dynamic Studio export file."""
-    try:
-        f = SingleLayerFrame(filename)
-    except IOError, TypeError:
-        return None
+        match = self.run_index_pattern.match(f.header['Originator'])
 
-    match = run_index_pattern.match(f.header['Originator'])
-
-    if match:
-        index = match.groupdict()['index']
-        return index
-    else:
-        return None
+        if match:
+            index = match.groupdict()['index']
+            return index
+        else:
+            return None
