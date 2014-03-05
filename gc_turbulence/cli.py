@@ -12,7 +12,7 @@ def cli():
 
     parser.add_argument('command',
                         help="The command that you wish to execute.")
-    parser.add_argument('files', nargs='+',
+    parser.add_argument('files', nargs='*',
                         help="Pattern to match to exectute command on.")
 
     args, remainder = parser.parse_known_args()
@@ -36,12 +36,12 @@ class Commander(object):
     def rename(self):
         """Change folder names from run hash to run index."""
         renamer = Renamer()
-        hash_directories = [d for d in self.items if renamer.is_pattern_dir(d)]
-
+        hash_directories = [d for d in self.items if not
+                                                    renamer.is_pattern_dir(d)]
         for each in hash_directories:
             renamer.rename(each)
 
-    def import_to_hdf5(self, args=None):
+    def import_to_hdf5(self, args=''):
         """Import the raw data from each folder to hdf5."""
         parser = argparse.ArgumentParser()
         parser.add_argument('--rex', default=None,
@@ -51,7 +51,6 @@ class Commander(object):
         args = parser.parse_args(args)
 
         for item in self.items:
-            # pattern = os.path.basename(item)
             cache_path = 'cache/{}.hdf5'.format(args.pattern)
             run = SingleLayerRun(data_dir=item,
                                  cache_path=cache_path,
@@ -78,11 +77,11 @@ class Renamer(object):
     def rename(self, directory):
         """Rename """
         hash = os.path.basename(directory)
-        first_file = os.path.join(hash, file_format(hash))
+        first_file = os.path.join(hash, self.file_format(hash))
         run_index = self.get_index_from_file(first_file)
         if run_index:
             index_name = os.path.join(os.path.dirname(directory), run_index)
-            print "rename: {} --> {}".format(hashd, index_name)
+            print "rename: {} --> {}".format(hash, index_name)
             # os.rename(hashd, index_name)
         else:
             pass
@@ -91,7 +90,7 @@ class Renamer(object):
         """Determine the run index from a Dynamic Studio export file."""
         try:
             f = SingleLayerFrame(filename)
-        except IOError, TypeError:
+        except (IOError, TypeError):
             return None
 
         match = self.run_index_pattern.match(f.header['Originator'])
