@@ -13,7 +13,8 @@ config = {
         'install_requires': ['nose'],
         'packages': ['gc_turbulence'],
         'scripts': [],
-        'name': 'gc_turbulence'
+        'name': 'gc_turbulence',
+        'entry_points': {'console_scripts': ['tt = gc_turbulence:cli']}
         }
 
 setup(**config)

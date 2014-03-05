@@ -1,14 +1,14 @@
 import os
 import glob
-
-import numpy as np
-import h5py
-import scipy.ndimage as ndi
-from matplotlib.pyplot import imread
+from collections import OrderedDict
 
 if 'DISPLAY' not in os.environ:
     import matplotlib as mpl
     mpl.use('Agg')
+
+import numpy as np
+import h5py
+import scipy.ndimage as ndi
 
 from util import makedirs_p
 from util import parallel_process
@@ -52,7 +52,7 @@ class SingleLayerFrame(object):
     """Each SingleLayerRun is comprised of a series of frames.
     This class represents one of the frames.
     """
-    def __init__(self, fname, columns, delimiter=None):
+    def __init__(self, fname, columns=None, delimiter=None):
         """Initialise a frame object.
 
         Inputs: fname - filename of a piv velocity text file
@@ -322,26 +322,33 @@ class SingleLayerRun(object):
             self.init_load_frames()
         return (SingleLayerFrame(fname, self.columns) for fname in self.files)
 
-    def import_to_hdf5(self, cache_path=None, processors=10):
+    def hdf5_write_prep(self, cache_path):
+        """Prepare for writing a new hdf5 to cache_path."""
+        makedirs_p(os.path.dirname(cache_path))
+        # delete if a file exists. h5py sometimes complains otherwise.
+        if hasattr(self, 'h5file'):
+            self.h5file.close()
+        if os.path.exists(cache_path):
+            os.remove(cache_path)
+
+    def import_to_hdf5(self, cache_path=None, processors=10, attributes=None):
         """Load files directly to hdf5 with multiprocessing.
 
         This can use a lot of RAM, ~20GB for a full run.
 
         Will overwrite any existing cache.
+
+        Inputs:
+            cache_path - specify where to save the hdf5
+            processors - how many processors to use in multicore extraction
+            attributes - dictionary of information to store in the .attrs
+                         section of the hdf5.
         """
-        self.init_load_frames()
+        if not self._init_frames:
+            self.init_load_frames()
 
-        if not (cache_path or self.cache_path):
-            return "No cache file specified!"
         cache_path = cache_path or self.cache_path
-
-        makedirs_p(os.path.dirname(cache_path))
-        # delete if a file exists. h5py sometimes complains otherwise.
-        print cache_path
-        if hasattr(self, 'h5file'):
-            self.h5file.close()
-        if os.path.exists(cache_path):
-            os.remove(cache_path)
+        self.hdf5_write_prep(cache_path)
 
         # extract the sorted data, timestamps and create array
         # you might be tempted to try and merge / append some
@@ -359,6 +366,11 @@ class SingleLayerRun(object):
         print "Writing {n} MB...".format(n=data.nbytes / 1000 ** 2)
         for vector in self.columns.names:
             h5file[vector][...] = data[vector]
+
+        # write attributes if specified
+        if attributes and hasattr(attributes, 'items'):
+            for k, v in attributes.items():
+                h5file.attrs[k] = v
 
         h5file['t'][...] = time
         h5file.close()
@@ -421,6 +433,8 @@ class SingleLayerRun(object):
         for v in self.vectors.names:
             setattr(self, v, self.h5file[v])
 
+        setattr(self, 'attributes', dict(self.h5file.attrs))
+
     def load_to_memory(self):
         """Load all of the vectors to memory. Careful! This can be
         O(10GB).
@@ -430,101 +444,6 @@ class SingleLayerRun(object):
         """
         for v in self.vectors.names:
             setattr(self, v, getattr(self, v)[...])
-
-
-class Validator(object):
-    # invert the images on load
-    s = np.s_[::-1, :]
-    mask_image_1 = imread('/home/eeaol/lab/data/flume2/main_data/'
-                          'image_limits/Define Mask - Reject(3nvpvi2w)/'
-                          'image_mask.3nvpvi2w.000000.bmp')[s].astype(np.bool)
-    mask_image_2 = imread('/home/eeaol/lab/data/flume2/main_data/'
-                          'image_limits/Define Mask - Reject(3nvpz1v5)/'
-                          'image_mask.3nvpz1v5.000000.bmp')[s].astype(np.bool)
-
-    # scale and offset for converting the x, y indices to real
-    # coordinates
-    scale_factor_1 = ((0.250052, 0.10244), (0.175165, 0.112465))
-    scale_factor_2 = ((0.235529, 0.11395), (0.167744, 0.114789))
-
-    def __init__(self, run):
-        self.run = run
-
-    @staticmethod
-    def find_index_edges_of_domain(mask_image):
-        """mask_image is a boolean array of validity over the
-        measurement domain. This is True in the middle (where the
-        data is valid) and False around the edges.
-
-        This function finds the indices of the edges of the valid domain.
-        """
-        dx, dy = np.gradient(mask_image)
-        is_edge = np.where(np.logical_or(dx, dy))
-        return is_edge
-
-    @staticmethod
-    def calculate_real_coords(mask_image, (scale_x, offset_x),
-                              (scale_y, offset_y)):
-        """Convert the indices of mask_image to real coordinates,
-        using a given scale and offset.
-        """
-        iy, ix = np.indices(mask_image.shape)
-        sy, sx = mask_image.shape
-
-        ry = scale_y * iy / sy - offset_y
-        rx = scale_x * ix / sx - offset_x
-
-        return ry, rx
-
-    @staticmethod
-    def find_edges_of_domain(mask_image, convx, convy):
-        """Calculate the edges of the valid domain in the mask_image
-        using real coordinates, calculated using the (scale, offset)
-        pairs given by convx and convy.
-
-        Returns a (N, 2) array of the edge points.
-        """
-        ry, rx = Validator.calculate_real_coords(mask_image, convx, convy)
-        is_edge = Validator.find_index_edges_of_domain(mask_image)
-        edge_x = rx[is_edge]
-        edge_y = ry[is_edge]
-        return np.array((edge_x, edge_y)).T
-
-    @staticmethod
-    def ccworder(A):
-        A = A - np.mean(A, 1)[:, None]
-        return np.argsort(np.arctan2(A[1, :], A[0, :]))
-
-    @staticmethod
-    def test_is_valid(edge_points):
-        """Create a method that tests whether given points lie
-        within the edge defined by edge_points.
-
-        Orders the points by their angle about the origin and
-        uses a matplotlib Path instance."""
-        ordered_edge = edge_points[Validator.ccworder(edge_points.T)]
-        edge_path = mpl.path.Path(ordered_edge)
-        return edge_path.contains_points
-
-    def valid(self):
-        """Return a boolean map of where the run data is valid."""
-        edge_points_1 = self.find_edges_of_domain(self.mask_image_1,
-                                                  *self.scale_factor_1)
-        edge_points_2 = self.find_edges_of_domain(self.mask_image_2,
-                                                  *self.scale_factor_2)
-
-        test_valid_1 = self.test_is_valid(edge_points_1)
-        test_valid_2 = self.test_is_valid(edge_points_2)
-
-        flat_x = self.run.x[:].flatten()
-        flat_z = self.run.z[:].flatten()
-
-        shape = self.run.x.shape
-
-        valid_1 = test_valid_1(np.vstack((flat_x, flat_z)).T).reshape(shape)
-        valid_2 = test_valid_2(np.vstack((flat_x, flat_z)).T).reshape(shape)
-
-        return valid_1 & valid_2
 
 
 class AnalysisRun(object):
@@ -617,6 +536,12 @@ class PreProcessor(object):
     """Apply basic pre processing to raw Dynamic Studio output to make
     it usable in analysis.
 
+    Usage:
+
+        r = SingleLayerRun
+        pp = PreProcessor(r)
+        pp.execute()
+
     Stages:
 
         - transform X, Z to lock / base relative.
@@ -624,6 +549,7 @@ class PreProcessor(object):
         - transform to front relative coordinates
         - interpolation of zero values (replace with nan?)
         - write to hdf5
+
     """
     # The origin of the coordinate system (centre of the
     # calibration target) is 105mm from the base of the tank
@@ -816,6 +742,9 @@ class PreProcessor(object):
             h5file.create_dataset(vector, data.shape, dtype=data.dtype)
             h5file[vector][...] = data
 
+        for k, v in self.run.attributes:
+            h5file.attrs[k] = v
+
         h5file.close()
 
 
@@ -881,6 +810,8 @@ class ProcessedRun(object):
         for v in self.vectors:
             setattr(self, v, self.h5file[v])
 
+        setattr(self, 'attributes', dict(self.h5file.attrs))
+
     def load_to_memory(self):
         """Load all of the vectors to memory. Careful! This can be
         O(10GB).
@@ -890,3 +821,95 @@ class ProcessedRun(object):
         """
         for v in self.vectors.names:
             setattr(self, v, getattr(self, v)[...])
+
+
+class Parameters(object):
+    """For a given run index, determine the type of run
+    (single layer / two layer) and load the appropriate
+    parameters.
+
+    An instance of this class is a function that returns
+    a (ordered) dictionary of the run parameters.
+    """
+    root = '/home/eeaol/lab/data/flume2/main_data'
+    single_layer_parameters = os.path.join(root, 'params_single_layer')
+    two_layer_parameters = os.path.join(root, 'params_two_layer')
+
+    single_layer_headers = [('run_index',        '|S10'),
+                            ('H',                np.float),
+                            ('D',                np.float),
+                            ('L',                np.float),
+                            ('rho_ambient',      np.float),
+                            ('rho_lock',         np.float),
+                            ('T_ambient',        np.float),
+                            ('T_lock',           np.float),
+                            ('n_sample_ambient', np.float),
+                            ('n_sample_lock',    np.float),
+                            ('T_sample_ambient', np.float),
+                            ('T_sample_lock',    np.float),
+                            ]
+
+    two_layer_headers = [('run_index',      '|S10'),
+                         ('H',              np.float),
+                         ('D',              np.float),
+                         ('L',              np.float),
+                         ('h_1 / H',        np.float),
+                         ('rho_upper',      np.float),
+                         ('rho_lower',      np.float),
+                         ('rho_lock',       np.float),
+                         ('T_upper',        np.float),
+                         ('T_lower',        np.float),
+                         ('T_lock',         np.float),
+                         ('n_sample_upper', np.float),
+                         ('n_sample_lower', np.float),
+                         ('n_sample_lock',  np.float),
+                         ('T_sample_upper', np.float),
+                         ('T_sample_lower', np.float),
+                         ('T_sample_lock',  np.float),
+                         ]
+
+    def __init__(self, run_index=None):
+        self.init_parameters()
+
+    def __call__(self, run_index):
+        run_type = self.determine_run_type(run_index)
+        if run_type == 'single layer':
+            return self.get_run_info(self.single_layer, run_index)
+        elif run_type == 'two layer':
+            return self.get_run_info(self.two_layer, run_index)
+        else:
+            return None
+
+    def get_run_info(self, parameters, index):
+        """Return the info for a given run index as an
+        OrderedDict.
+        """
+        line = np.where(parameters['run_index'] == index)
+        info = parameters[line]
+        keys = info.dtype.names
+        values = info[0]
+        odict = OrderedDict(zip(keys, values))
+        odict['run type'] = self.determine_run_type(index)
+        return odict
+
+    def determine_run_type(self, run_index):
+        """Returns the run type as a string, either
+        'two_layer' or 'single_layer'.
+        """
+        if run_index in self.single_layer['run_index']:
+            return 'single layer'
+        elif run_index in self.two_layer['run_index']:
+            return 'two layer'
+        else:
+            return None
+
+    def init_parameters(self):
+        """Load the parameters files."""
+        self.single_layer = self.load_parameters(self.single_layer_parameters,
+                                                 self.single_layer_headers)
+        self.two_layer = self.load_parameters(self.two_layer_parameters,
+                                              self.two_layer_headers)
+
+    @staticmethod
+    def load_parameters(file, headers):
+        return np.loadtxt(file, dtype=headers, skiprows=2)
