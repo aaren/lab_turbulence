@@ -199,7 +199,7 @@ class H5Cache(object):
     def vectors(self, value):
         self._vectors = value
 
-    def load(self):
+    def load(self, force=False):
         """Load run arrays from disk.
 
         Useful to avoid re-extracting the velocity data
@@ -211,15 +211,18 @@ class H5Cache(object):
         if not self.valid_cache_exists:
             raise UserWarning('No valid cache file found!')
 
-        if hasattr(self, 'h5file'):
-            try:
-                self.h5file.close()
-            except ValueError:
-                # case file already closed
-                pass
-
         self.h5file = h5py.File(self.cache_path, 'r')
-        for v in self.vectors.names:
+
+        vector_names = self.vectors.names
+        different_names = set(vector_names).difference(self.h5file.keys())
+
+        if different_names and not force:
+            raise TypeError('Vector names are different to hdf5 keys')
+        elif different_names and force:
+            print 'Vector names are different to hdf5 keys. Overriding...'
+            vector_names = self.h5file.keys()
+
+        for v in vector_names:
             setattr(self, v, self.h5file[v])
 
         setattr(self, 'attributes', dict(self.h5file.attrs))
@@ -702,17 +705,20 @@ class PreProcessor(object):
         h5file.close()
 
 
-class NonDimensionaliser(object):
-    """Take a run and non dimensionalise it, re-mapping the data to
-    a standard regular grid.
-    """
-
-
 class ProcessedRun(H5Cache):
     """Wrapper around a run that has had its data quality controlled."""
-    # attribute names that the data will have when loaded from the
-    # hdf5
-    vectors = np.dtype(PreProcessor.vectors)
+    def __init__(self, cache_path=None, forced_load=False):
+        """Initialise a processed run.
+
+        cache_path - hdf5 to load from
+        forced_load - load hdf5 even its keys aren't the same as vectors
+        """
+        # specify vectors as those produced by the pre processor
+        self.vectors = np.dtype(PreProcessor.vectors)
+        self.cache_path = cache_path
+        if self.cache_path:
+            self.init_cache(self.cache_path)
+            self.load(force=forced_load)
 
 
 class Parameters(object):
