@@ -74,6 +74,9 @@ class Commander(object):
 
             folder_name = os.path.basename(item)
             run_info = parameters(folder_name)
+            if not run_info:
+                print "\n!!! Could not find info for %s !!!\n" % folder_name
+                run_info = {}
 
             # extract and store the run hash
             rhash = hash_pattern.match(run.files[0]).groupdict()['hash']
