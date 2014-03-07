@@ -528,6 +528,7 @@ class PreProcessor(object):
                ('V_', np.float32),  # front relative cross stream velocity
                ('W_', np.float32),  # front relative vertical velocity
                ]
+    vectors = np.dtype(vectors)
 
     def __init__(self, run):
         self.run = run
@@ -699,7 +700,7 @@ class PreProcessor(object):
             h5file.create_dataset(vector, data.shape, dtype=data.dtype)
             h5file[vector][...] = data
 
-        for k, v in self.run.attributes:
+        for k, v in self.run.attributes.items():
             h5file.attrs[k] = v
 
         h5file.close()
