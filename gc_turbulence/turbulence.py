@@ -608,14 +608,33 @@ class PreProcessor(H5Cache):
 
         return front_space, front_time
 
-    def transform_to_front_relative(self):
+    def fit_front(self):
+        """Fit a straight line to the detected front
+        and resample the front times from this straight
+        line.
+        """
+        front_space, front_time = self.detect_front()
+        front_function = np.poly1d(np.polyfit(front_space, front_time, 1))
+        straight_time = front_function(front_space)
+        return front_space, straight_time
+
+    def transform_to_front_relative(self, fit='1d'):
         """Transform the data into coordinates relative to the
         position of the gravity current front.
+
+        fit - defaults to '1d', which is to fit a straight line to the
+              current and resample the time from that.
+
+              Using None will turn off any fitting and will
+              just use the raw time / space detection.
 
         Implementation takes advantage of regular rectangular data
         and uses map_coordinates.
         """
-        front_space, front_time = self.detect_front()
+        if not fit:
+            front_space, front_time = self.detect_front()
+        elif fit == '1d':
+            front_space, front_time = self.fit_front()
 
         # get the real start time of the data and the
         # sampling distance in time (dt)

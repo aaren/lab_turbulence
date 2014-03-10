@@ -2,7 +2,7 @@ Aim: Complete tasks from last supervision
 
 Things to do:
 
-- [ ] fit straight line / smooth front detection
+- [x] fit straight line / smooth front detection
 - [ ] check sensitivity of stats to different fittings
 
 - [ ] overlay multiple runs to get first impression of similarity
