@@ -7,4 +7,4 @@ from turbulence import ProcessedRun
 from turbulence import PreProcessor
 from analysis import DMD
 
-from cli import cli
+from commander import cli
