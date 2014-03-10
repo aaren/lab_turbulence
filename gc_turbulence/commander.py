@@ -2,6 +2,7 @@
 import re
 import argparse
 import os
+import glob
 
 import h5py
 
@@ -59,33 +60,44 @@ class Commander(object):
                             help="regular expression to match files")
         parser.add_argument('--cache', default='cache',
                             help="directory to save the cache files to")
+        parser.add_argument('--new', action='store_true',
+                            help="Only import the unimported.")
         args = parser.parse_args(args)
 
         parameters = Parameters()
 
-        # the run hash is found embedded in the file path
-        hash_pattern = re.compile(r'.*stereo\.(?P<hash>.*)\.(?P<num>.*)\.csv')
+        cached = [os.path.splitext(c)[0] for c in os.listdir(args.cache)]
 
         for item in self.items:
-            run = SingleLayerRun(data_dir=item,
-                                 pattern=args.pattern,
-                                 rex=args.rex)
-            run.init_load_frames()
+            index = os.path.basename(item)
+            if index in cached and args.new:
+                pass
+            else:
+                self.assim(item, args, parameters)
 
-            folder_name = os.path.basename(item)
-            run_info = parameters(folder_name)
-            if not run_info:
-                print "\n!!! Could not find info for %s !!!\n" % folder_name
-                run_info = {}
+    @staticmethod
+    def assim(item, args, parameters):
+        run = SingleLayerRun(data_dir=item,
+                             pattern=args.pattern,
+                             rex=args.rex)
+        run.init_load_frames()
 
-            # extract and store the run hash
-            rhash = hash_pattern.match(run.files[0]).groupdict()['hash']
-            run_info['hash'] = rhash
+        folder_name = os.path.basename(item)
+        run_info = parameters(folder_name)
+        if not run_info:
+            print "\n!!! Could not find info for %s !!!\n" % folder_name
+            run_info = {}
 
-            run.cache_path = '{}/{}.hdf5'.format(args.cache, folder_name)
-            info = "Importing to hdf5: {} --> {} ({} files)"
-            print info.format(item, run.cache_path, run.nfiles)
-            run.import_to_hdf5(attributes=run_info)
+        # the run hash is found embedded in the file path
+        hash_pattern = re.compile(r'.*stereo\.(?P<hash>.*)\.(?P<num>.*)\.csv')
+        # extract and store the run hash
+        rhash = hash_pattern.match(run.files[0]).groupdict()['hash']
+        run_info['hash'] = rhash
+
+        run.cache_path = '{}/{}.hdf5'.format(args.cache, folder_name)
+        info = "Importing to hdf5: {} --> {} ({} files)"
+        print info.format(item, run.cache_path, run.nfiles)
+        run.import_to_hdf5(attributes=run_info)
 
     def info(self):
         """Find information about things."""
@@ -105,8 +117,9 @@ class Commander(object):
             # then try and find an index in the first file of the
             # item
             else:
-                fname = renamer.first_file_format(os.path.basename(item))
-                path = os.path.join(item, fname)
+                fpattern = renamer.first_file_format('*')
+                fname = os.path.join(item, fpattern)
+                path = glob.glob(fname)[0]
                 self.file_info(path)
 
     def file_info(self, item):
