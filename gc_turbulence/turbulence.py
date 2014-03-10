@@ -150,6 +150,7 @@ class SingleLayerFrame(object):
 
 
 class H5Cache(object):
+    """Base class for loading from a HDF5 cache."""
     def __init__(self, cache_path=None):
         self.cache_path = cache_path
         if self.cache_path:
