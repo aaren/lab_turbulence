@@ -481,7 +481,7 @@ class SingleLayerRun(H5Cache):
         return timestamps
 
 
-class PreProcessor(object):
+class PreProcessor(H5Cache):
     """Apply basic pre processing to raw Dynamic Studio output to make
     it usable in analysis.
 
@@ -675,26 +675,14 @@ class PreProcessor(object):
         """
         # TODO: write me!
 
-    def write_data(self):
+    def write_data(self, path):
         """Save everything to a new hdf5."""
         if not self.has_executed:
             print "Data has not been processed! Not writing."
             return
 
-        raw_cache = self.run.cache_path
-        raw_root, ext = os.path.splitext(raw_cache)
-
-        pro_root = raw_root + '_processed'
-        cache_path = pro_root + ext
-
-        makedirs_p(os.path.dirname(cache_path))
-        # delete if a file exists. h5py sometimes complains otherwise.
-        if hasattr(self, 'h5file'):
-            self.h5file.close()
-        if os.path.exists(cache_path):
-            os.remove(cache_path)
-
-        h5file = h5py.File(cache_path, 'w')
+        self.hdf5_write_prep(path)
+        h5file = h5py.File(path, 'w')
 
         for vector in self.vectors.names:
             data = getattr(self, vector)

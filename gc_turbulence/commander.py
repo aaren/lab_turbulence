@@ -8,6 +8,7 @@ import h5py
 
 from turbulence import SingleLayerFrame
 from turbulence import SingleLayerRun
+from turbulence import PreProcessor
 from turbulence import Parameters
 
 
@@ -169,6 +170,27 @@ class Commander(object):
         if run_info:
             for k, v in run_info.items():
                 print info_line(k, v)
+
+    def pre_process(self, args=''):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--output', default='processed',
+                            help="directory to save the pre-processed data to")
+        args = parser.parse_args(args)
+
+        for item in self.items:
+            if not h5py.is_hdf5(item):
+                print "{} is not hdf5!".format(item)
+
+            else:
+                fname = os.path.basename(item)
+                outpath = os.path.join(args.output, fname)
+
+                run = SingleLayerRun(cache_path=item)
+                pp = PreProcessor(run=run)
+                print "Pre-processing {} ...".format(item)
+                pp.execute()
+                print "writing data to {} ...".format(outpath)
+                pp.write_data(outpath)
 
 
 class Renamer(object):
