@@ -668,6 +668,9 @@ class PreProcessor(H5Cache):
         t_coords = (rtf - rt[0]) / dt
 
         # z and x coords are the same as before
+        # Actually, the x_coords should be created by extending
+        # front_space - it works here because front_space is the
+        # same as self.X[0, :, 0]
         zx_coords = np.indices(t_coords.shape)[:2]
 
         # required shape of the coordinates array is
@@ -686,6 +689,62 @@ class PreProcessor(H5Cache):
         # N.B. there is an assumption here that r.t, r.z and r.x are
         # 3d arrays. They are redundant in that they repeat over 2 of
         # their axes (r.z, r.x, r.t = np.meshgrid(z, x, t, indexing='ij'))
+
+    def transform_to_front_relative_space(self, fit='1d'):
+        """Transform into a spatial front relative system."""
+        # TODO: abstract front transform and combine this with
+        # temporal transform
+        if not fit:
+            front_space, front_time = self.detect_front()
+        elif fit == '1d':
+            front_space, front_time = self.fit_front()
+
+        rx = self.X[0, :, 0]
+        dx = rx[1] - rx[0]
+
+        # TODO: specify x0, x1 as arguments
+        x0 = -0.2
+        x1 = 0.2
+        relative_samples = np.arange(x0, x1, dx)
+        sz, sx = self.T.shape[:2]
+        # size of sampling axis
+        ss = relative_samples.size
+        # FIXME: below is wrong
+        # might be working with the above new axes
+        xrelative_samples = np.tile(relative_samples, (sz, sx, 1))
+
+        rxf = front_space[None, ..., None] + xrelative_samples
+
+        # grid coordinates of the sampling times
+        # (has to be relative to what the time is at
+        # the start of the data).
+        x_coords = (rxf - rx[0]) / dx
+
+        # z coords are the same as before
+        z_coords = np.indices(x_coords.shape)[0]
+
+        # t coords are front_time extended over the sampling volume
+        # plus whatever else you want to be able to see
+        rt = self.T[0, 0, :]
+        xfront_time = np.tile(front_time[None, ..., None], (sz, 1, ss))
+        t_coords = (xfront_time - rt[0]) / (rt[1] - rt[0])
+
+        # required shape of the coordinates array is
+        # (3, rz.size, rx.size, rt.size)
+        coords = np.concatenate((z_coords[None],
+                                 x_coords[None],
+                                 t_coords[None]), axis=0)
+
+        # there are now two x dimensions - the original and the
+        # sampling
+        self.Xss_ = xrelative_samples
+        self.Xs_ = self.X[:, :, 0, None].repeat(ss, axis=-1)
+        self.Zs_ = self.Z[:, :, 0, None].repeat(ss, axis=-1)
+        self.Ts_ = xfront_time
+
+        self.Us_ = ndi.map_coordinates(self.U, coords, cval=np.nan)
+        self.Vs_ = ndi.map_coordinates(self.V, coords, cval=np.nan)
+        self.Ws_ = ndi.map_coordinates(self.W, coords, cval=np.nan)
 
     def interpolate_zeroes(self):
         """The raw data contains regions with velocity identical

@@ -8,7 +8,7 @@ Things to do:
 - [ ] overlay multiple runs to get first impression of similarity
   (use the single height over time)
 
-- [ ] do the front relative transform along the other (space) axis
+- [x] do the front relative transform along the other (space) axis
   and see what it looks like
 
 - [ ] can we identify qualitatively different regions of the flow?
