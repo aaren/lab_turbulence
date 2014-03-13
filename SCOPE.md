@@ -5,7 +5,7 @@ Things to do:
 - [x] fit straight line / smooth front detection
 - [ ] check sensitivity of stats to different fittings
 
-- [ ] overlay multiple runs to get first impression of similarity
+- [x] overlay multiple runs to get first impression of similarity
   (use the single height over time)
 
 - [x] do the front relative transform along the other (space) axis
