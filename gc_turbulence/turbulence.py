@@ -528,6 +528,8 @@ class PreProcessor(H5Cache):
                ('U_', np.float32),  # front relative streamwise velocity
                ('V_', np.float32),  # front relative cross stream velocity
                ('W_', np.float32),  # front relative vertical velocity
+               ('fx', np.float32),  # front detection in space
+               ('ft', np.float32),  # front detection in time
                ]
     vectors = np.dtype(vectors)
 
@@ -635,6 +637,9 @@ class PreProcessor(H5Cache):
             front_space, front_time = self.detect_front()
         elif fit == '1d':
             front_space, front_time = self.fit_front()
+
+        self.fx = front_space
+        self.ft = front_time
 
         # get the real start time of the data and the
         # sampling distance in time (dt)
