@@ -19,10 +19,43 @@ Things to do:
 - [ ] do they have distinct pdfs?
 - [ ] does cantero have something to say here?
 
-- [ ] DMD: can we recompose the flow from low order modes?
+- [ ] DMD: can we recompose the flow from low order modes? are the
+  stats the same?
 
-- [ ] look at streamwise velocity
-- [ ] subtract front speed to get front relative velocity
-- [ ] is there a region of the flow in which the decomp mean front
+- [x] look at streamwise velocity
+- [x] subtract front speed to get front relative velocity
+- [x] is there a region of the flow in which the decomp mean front
   relative velocity is zero? (is this the region of statistical
   stationarity?)
+
+
+More things to do:
+
+- [ ] look at ogive plots
+
+- [ ] distinguish between sampling dimension and time / space in
+  front relative extraction.
+
+- [ ] interpolate zeros in pre processor - how does pandas do it?
+
+- [ ] wavelet ensembles? can we increase confidence with more
+  ensemble members
+
+- [ ] make the pdf as a function of time and height work
+    - [ ] plot with log height
+    - [ ] plot for multiple ensembles
+
+- [ ] distinguish ensembles - inter / intra run, inter parameter
+
+- [ ] vorticity plots. basically port demo/plot.py into the plotter
+  class
+
+- [ ] rapid distortion theory. eddy turnover time large compared
+  with advective timescale?
+
+- [ ] pdfs limited to particular events (eddies)
+
+- [ ] fit log profile to vertical pdfs (log height)
+
+- [ ] compute vertical pdfs with highlighted data exceeding certain
+  percentile close together in space / time (i.e. same event)
