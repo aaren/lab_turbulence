@@ -530,6 +530,7 @@ class PreProcessor(H5Cache):
                ('W_', np.float32),  # front relative vertical velocity
                ('fx', np.float32),  # front detection in space
                ('ft', np.float32),  # front detection in time
+# TODO: add front relative velocities (i.e. subtract front speed from U)
                ]
     vectors = np.dtype(vectors)
 
@@ -757,6 +758,7 @@ class PreProcessor(H5Cache):
         interpolation.
         """
         # TODO: write me!
+        # How do you deal with adjacent zeros?
 
     def write_data(self, path):
         """Save everything to a new hdf5."""
