@@ -490,6 +490,7 @@ class PreProcessor(H5Cache):
         r = SingleLayerRun
         pp = PreProcessor(r)
         pp.execute()
+        pp.write_data(hdf5_cache_path)
 
     Stages:
 
@@ -499,6 +500,12 @@ class PreProcessor(H5Cache):
         - interpolation of zero values (replace with nan?)
         - write to hdf5
 
+    N.B. You won't be able to write anything until you
+    have run `pp.execute()`.
+
+    There are more methods on this class (for each of the
+    steps in execute) but if they are run out of order you
+    will probably get weird results.
     """
     # The origin of the coordinate system (centre of the
     # calibration target) is 105mm from the base of the tank
@@ -538,12 +545,19 @@ class PreProcessor(H5Cache):
         self.run = run
         self.has_executed = False
 
-    ## TODO: specify order in which these methods must be run.
     def execute(self):
-        self.extract_valid_region()
-        self.interpolate_zeroes()
-        self.transform_to_lock_relative()
-        self.transform_to_front_relative()
+        """Execute the pre-processing steps in the
+        right order. Can't write data until this has
+        been done.
+        """
+        steps = ['extract_valid_region',
+                 'interpolate_zeroes',
+                 'transform_to_lock_relative',
+                 'transform_to_front_relative']
+
+        for step in steps:
+            getattr(self, step)()
+
         self.has_executed = True
 
     def transform_to_lock_relative(self):
