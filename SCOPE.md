@@ -1,6 +1,10 @@
-Aim: Complete tasks from last supervision
+This is my working code for looking at velocity data from lab gravity currents
+obtained through PIV. At some point this might be stable but right now it is a
+work in progress!
 
 Things to do:
+
+- [ ] Non-dimensionalise
 
 - [x] fit straight line / smooth front detection
 - [ ] check sensitivity of stats to different fittings
