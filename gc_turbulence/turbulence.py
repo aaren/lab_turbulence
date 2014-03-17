@@ -529,12 +529,12 @@ class PreProcessor(H5Cache):
                ('U',  np.float32),  # streamwise velocity
                ('V',  np.float32),  # cross stream velocity
                ('W',  np.float32),  # vertical velocity
-               ('X_', np.float32),  # front relative streamwise coords
-               ('Z_', np.float32),  # front relative vertical coords
-               ('T_', np.float32),  # front relative time coords
-               ('U_', np.float32),  # front relative streamwise velocity
-               ('V_', np.float32),  # front relative cross stream velocity
-               ('W_', np.float32),  # front relative vertical velocity
+               ('Xf', np.float32),  # front relative streamwise coords
+               ('Zf', np.float32),  # front relative vertical coords
+               ('Tf', np.float32),  # front relative time coords
+               ('Uf', np.float32),  # front relative streamwise velocity
+               ('Vf', np.float32),  # front relative cross stream velocity
+               ('Wf', np.float32),  # front relative vertical velocity
                ('fx', np.float32),  # front detection in space
                ('ft', np.float32),  # front detection in time
 # TODO: add front relative velocities (i.e. subtract front speed from U)
@@ -698,13 +698,13 @@ class PreProcessor(H5Cache):
         coords = np.concatenate((zx_coords, t_coords[None]), axis=0)
 
         st = t_coords.shape[-1]
-        self.X_ = self.X[:, :, 0, None].repeat(st, axis=-1)
-        self.Z_ = self.Z[:, :, 0, None].repeat(st, axis=-1)
-        self.T_ = relative_sample_times
+        self.Xf = self.X[:, :, 0, None].repeat(st, axis=-1)
+        self.Zf = self.Z[:, :, 0, None].repeat(st, axis=-1)
+        self.Tf = relative_sample_times
 
-        self.U_ = ndi.map_coordinates(self.U, coords)
-        self.V_ = ndi.map_coordinates(self.V, coords)
-        self.W_ = ndi.map_coordinates(self.W, coords)
+        self.Uf = ndi.map_coordinates(self.U, coords)
+        self.Vf = ndi.map_coordinates(self.V, coords)
+        self.Wf = ndi.map_coordinates(self.W, coords)
 
         # N.B. there is an assumption here that r.t, r.z and r.x are
         # 3d arrays. They are redundant in that they repeat over 2 of
@@ -757,14 +757,14 @@ class PreProcessor(H5Cache):
 
         # there are now two x dimensions - the original and the
         # sampling
-        self.Xss_ = xrelative_samples
-        self.Xs_ = self.X[:, :, 0, None].repeat(ss, axis=-1)
-        self.Zs_ = self.Z[:, :, 0, None].repeat(ss, axis=-1)
-        self.Ts_ = xfront_time
+        self.Xss = xrelative_samples
+        self.Xfs = self.X[:, :, 0, None].repeat(ss, axis=-1)
+        self.Zfs = self.Z[:, :, 0, None].repeat(ss, axis=-1)
+        self.Tfs = xfront_time
 
-        self.Us_ = ndi.map_coordinates(self.U, coords, cval=np.nan)
-        self.Vs_ = ndi.map_coordinates(self.V, coords, cval=np.nan)
-        self.Ws_ = ndi.map_coordinates(self.W, coords, cval=np.nan)
+        self.Ufs = ndi.map_coordinates(self.U, coords, cval=np.nan)
+        self.Vfs = ndi.map_coordinates(self.V, coords, cval=np.nan)
+        self.Wfs = ndi.map_coordinates(self.W, coords, cval=np.nan)
 
     def interpolate_zeroes(self):
         """The raw data contains regions with velocity identical
