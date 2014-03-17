@@ -78,3 +78,36 @@ class DMD(object):
         fig.tight_layout()
 
         return fig
+
+
+class Plotter(object):
+    def __init__(self, run):
+        """Plotting routines for turbulence analysis.
+
+            run - ProcessedRun instance
+        """
+        self.run = run
+
+    def mean_velocity(self, ax):
+        u_mod_bar = self.mean_f(self.uf_abs)
+        contourf = ax.contourf(u_mod_bar, self.levels_u)
+        ax.set_title(r'Mean speed $\overline{|u|_t}(x, z)$')
+        ax.set_xlabel('horizontal')
+        ax.set_ylabel('vertical')
+        return contourf
+
+    def mean_velocity_Uf(self, ax):
+        mean_Uf = self.mean_f(self.uf)
+        contourf = ax.contourf(mean_Uf, self.levels_u)
+        ax.set_title('Time averaged streamwise velocity')
+        ax.set_xlabel('time after front passage')
+        ax.set_ylabel('height')
+        return contourf
+
+    def mean_velocity_Wf(self, ax):
+        mean_Wf = self.mean_f(self.wf)
+        contourf = ax.contourf(mean_Wf, self.levels_w)
+        ax.set_title('Time averaged vertical velocity')
+        ax.set_xlabel('time after front passage')
+        ax.set_ylabel('height')
+        return contourf
