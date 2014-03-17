@@ -547,7 +547,8 @@ class PreProcessor(H5Cache):
                ('Wf', np.float32),  # front relative vertical velocity
                ('fx', np.float32),  # front detection in space
                ('ft', np.float32),  # front detection in time
-# TODO: add front relative velocities (i.e. subtract front speed from U)
+               ('front_speed',      # speed of the front in LAB coords
+                      np.float32),
                ]
     vectors = np.dtype(vectors)
 
@@ -713,7 +714,11 @@ class PreProcessor(H5Cache):
         self.Zf = self.Z[:, :, 0, None].repeat(st, axis=-1)
         self.Tf = relative_sample_times
 
-        self.Uf = ndi.map_coordinates(self.U, coords)
+        # compute the speed of the front (assumed constant)
+        front_speed = (np.diff(front_space) / np.diff(front_time)).mean()
+        # the front relative velocities are in a frame moving
+        # with the front
+        self.Uf = ndi.map_coordinates(self.U, coords) - front_speed
         self.Vf = ndi.map_coordinates(self.V, coords)
         self.Wf = ndi.map_coordinates(self.W, coords)
 
