@@ -760,6 +760,13 @@ class PreProcessor(H5Cache):
         # TODO: write me!
         # How do you deal with adjacent zeros?
 
+        # For now we set the zeros to nans
+        self.U[self.U == 0] = np.nan
+        self.V[self.V == 0] = np.nan
+        self.W[self.W == 0] = np.nan
+        # FIXME: this messes up map_coordinates and we get nan everywhere!
+        # TODO: filter out velocities outside of the regular distribution
+
     def write_data(self, path):
         """Save everything to a new hdf5."""
         if not self.has_executed:
