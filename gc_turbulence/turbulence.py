@@ -14,6 +14,8 @@ from util import makedirs_p
 from util import parallel_process
 from util import parallel_stub
 
+from inpainting import Inpainter
+
 
 def get_timestamp(fname):
     """For a Dynamic Studio export file, find the line in the header
@@ -544,6 +546,7 @@ class PreProcessor(H5Cache):
 
     def __init__(self, run):
         self.run = run
+        self.run.load()
         self.has_executed = False
 
     def execute(self):
@@ -552,7 +555,8 @@ class PreProcessor(H5Cache):
         been done.
         """
         steps = ['extract_valid_region',
-                 'interpolate_zeroes',
+                 'filter_zeroes',
+                 'interpolate_nan',
                  'transform_to_lock_relative',
                  'transform_to_front_relative']
 
@@ -614,6 +618,7 @@ class PreProcessor(H5Cache):
         searches for the first time at which this exceeds a
         threshold.
         """
+        # TODO: make more general, find the peak instead
         threshold = 0.01  # m / s
         column_avg = self.W.mean(axis=0)
         exceed = column_avg > threshold
@@ -635,6 +640,17 @@ class PreProcessor(H5Cache):
         front_function = np.poly1d(np.polyfit(front_space, front_time, 1))
         straight_time = front_function(front_space)
         return front_space, straight_time
+
+    @staticmethod
+    def compute_front_speed(front_space, front_time):
+        """compute the speed of the front (assumed constant)"""
+        front_speed = (np.diff(front_space) / np.diff(front_time)).mean()
+        return front_speed
+
+    @property
+    def front_speed(self):
+        front_space, front_time = self.fit_front()
+        return self.compute_front_speed(front_space, front_time)
 
     def transform_to_front_relative(self, fit='1d'):
         """Transform the data into coordinates relative to the
@@ -771,13 +787,36 @@ class PreProcessor(H5Cache):
         self.Vfs = ndi.map_coordinates(self.V, coords, cval=np.nan)
         self.Wfs = ndi.map_coordinates(self.W, coords, cval=np.nan)
 
-    def interpolate_zeroes(self):
+    def filter_zeroes(self):
+        """Set all velocities that are identically zero to be nan."""
+        self.U[self.U == 0] = np.nan
+        self.V[self.V == 0] = np.nan
+        self.W[self.W == 0] = np.nan
+
+    def filter_anomalies(self):
+        """Find anomalous data and set to nan.
+
+        You should run this either before filter_zeroes or after
+        interpolate_nan, or you get lots more nans.
+
+        After running this you should run interpolate_nan.
+        """
+        # TODO: write me!
+        smoothed = ndi.uniform_filter(self.U, size=3)
+        thresh = 0.05  # TODO: set more generally
+        bad = np.abs(self.U - smoothed) > thresh
+        self.U[bad] = np.nan
+
+    def interpolate_nan(self, sub_region=None, scale='auto'):
         """The raw data contains regions with velocity identical
         to zero. These are non physical and can be removed by
         interpolation.
         """
-        # TODO: write me!
-        # How do you deal with adjacent zeros?
+        if scale == 'auto':
+            scale = self.front_speed
+
+        inpainter = Inpainter(self, sub_region=sub_region, scale=scale)
+        inpainter.paint()
 
     def write_data(self, path):
         """Save everything to a new hdf5."""
