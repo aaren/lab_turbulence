@@ -190,12 +190,7 @@ class DMD(AnalysisBase):
         return fig
 
 
-class Distributions(AnalysisBase):
-    @property
-    def histogram(self):
-        """Compute the full 3d histogram of the run."""
-        H, edges = np.histogramdd(data, bins=self.bins, normed=True)
-
+class Histograms():
     @staticmethod
     def plot_time_histogram(ax, data, bins, where=np.s_[:], **kwargs):
         """Plot a histogram of a quantity through time.
@@ -214,17 +209,6 @@ class Distributions(AnalysisBase):
         ax.set_xlabel('time after front passage')
         ax.set_ylabel('vertical velocity')
         return ax
-
-    def plot_vertical_histogram(ax):
-        pass
-
-    def plot_histogram_time(self, quantity):
-        """Create a histogram of some quantity as a function
-        of time."""
-        time = self.run.Tf[:].flatten() * ts
-
-    def plot_histogram_vertical(self, quantity):
-        pass
 
     def vertical_histogram(self, ax, quantity, bins, levels):
         """Make a contour plot of the vertical distribution of some
@@ -250,6 +234,8 @@ class Distributions(AnalysisBase):
         ax.set_ylabel('z')
         return contourf
 
+
+class KDE(object):
     @staticmethod
     def fit_kde(data, coords, bandwidth, rtol=1E-3):
         kde = KernelDensity(bandwidth=bandwidth, rtol=rtol)
