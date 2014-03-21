@@ -9,6 +9,7 @@ if 'DISPLAY' not in os.environ:
 import numpy as np
 import h5py
 import scipy.ndimage as ndi
+import scipy.interpolate as interp
 
 from util import makedirs_p
 from util import parallel_process
@@ -31,7 +32,6 @@ def get_timestamp(fname):
             elif 'CONTENT' in line:
                 raise ValueError("No timestamp in header.""")
 
-
 @parallel_stub
 def file_to_array(fname, dtype, skip_header, delimiter=None):
     """Extract file to recarray using numpy loadtxt and
@@ -46,6 +46,16 @@ def file_to_array(fname, dtype, skip_header, delimiter=None):
                    skiprows=skip_header,
                    delimiter=delimiter,)
     return t, D
+
+@parallel_stub
+def inpainter(coords, data, labels, i):
+    valid_shell = Inpainter.find_valid_shell(labels == i)
+    interpolator = Inpainter.construct_interpolator(coords, data, valid_shell)
+
+    invalid_points = np.where(labels == i)
+    invalid_values = interpolator(invalid_points)
+
+    return i, invalid_values
 
 
 class SingleLayerFrame(object):
@@ -536,6 +546,7 @@ class PreProcessor(H5Cache):
 
     def __init__(self, run):
         self.run = run
+        self.run.load()
         self.has_executed = False
 
     ## TODO: specify order in which these methods must be run.
@@ -757,15 +768,13 @@ class PreProcessor(H5Cache):
         to zero. These are non physical and can be removed by
         interpolation.
         """
-        # TODO: write me!
-        # How do you deal with adjacent zeros?
-
-        # For now we set the zeros to nans
+        # Set the zeros to nans
         self.U[self.U == 0] = np.nan
         self.V[self.V == 0] = np.nan
         self.W[self.W == 0] = np.nan
-        # FIXME: this messes up map_coordinates and we get nan everywhere!
-        # TODO: filter out velocities outside of the regular distribution
+
+        inpainter = Inpainter()
+        inpainter.paint(self)
 
     def write_data(self, path):
         """Save everything to a new hdf5."""
@@ -785,6 +794,80 @@ class PreProcessor(H5Cache):
             h5file.attrs[k] = v
 
         h5file.close()
+
+
+class Inpainter(object):
+    """Fills holes in gridded data (represented by nan) by
+    performing linear interpolation using only the set of points
+    surrounding each hole.
+    """
+    @staticmethod
+    def find_valid_shell(holes, iterations=2):
+        """For an n-dimensional boolean input, return an array of the
+        same shape that is true on the exterior surface of the true
+        volume in the input."""
+        # we use two iterations so that we get the corner pieces as well
+        dilation = ndi.binary_dilation(holes, iterations=iterations)
+        return np.where(dilation & ~holes)
+
+    @staticmethod
+    def construct_interpolator(coords, data, valid_shell):
+        valid_points = np.vstack(c[valid_shell] for c in coords).T
+        valid_values = np.vstack(d[valid_shell] for d in data).T
+        interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
+        return interpolator
+
+    def paint_by_label(self, run, processors=10):
+        """Like self.paint, but isolates invalid regions and
+        constructs an interpolator for each one.
+
+        If necessary we can multiprocess this method.
+        """
+        invalid = np.isnan(run.U)
+
+        coords = (run.Z, run.X, run.T)
+        data = (run.U, run.V, run.W)
+
+        # diagonally connected neighbours
+        connection_structure = np.ones((3, 3, 3))
+        labels, n = ndi.label(invalid, structure=connection_structure)
+
+        kwarglist = [{'coords': coords,
+                      'data': data,
+                      'labels': labels,
+                      'i': i} for i in range(n)]
+
+
+        out = parallel_process(inpainter, kwarglist=kwarglist, processors=processors)
+
+        for i, invalid_values in out:
+            invalid_points = np.where(labels == i)
+            run.U[invalid_points] = invalid_values[:, 0]
+
+    def paint(self, run):
+        """Compute the interpolated data and update the run in
+        place.
+
+        run is something that looks like a turbulence run,
+        i.e. it has attributes X, Z, T, U, V, W that hold numpy
+        arrays of the run data.
+        """
+        invalid = np.isnan(run.U)
+        complete_valid_shell = self.find_valid_shell(invalid)
+
+        coords = (run.Z, run.X, run.T)
+        data = (run.U, run.V, run.W)
+
+        interpolator = self.construct_interpolator(coords,
+                                                   data,
+                                                   complete_valid_shell)
+
+        invalid_points = np.vstack(c[invalid] for c in coords).T
+        invalid_values = interpolator(invalid_points)
+
+        run.U[invalid] = invalid_values[:, 0]
+        run.V[invalid] = invalid_values[:, 1]
+        run.W[invalid] = invalid_values[:, 2]
 
 
 class ProcessedRun(H5Cache):
