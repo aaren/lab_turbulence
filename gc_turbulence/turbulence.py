@@ -763,16 +763,17 @@ class PreProcessor(H5Cache):
         self.Vs_ = ndi.map_coordinates(self.V, coords, cval=np.nan)
         self.Ws_ = ndi.map_coordinates(self.W, coords, cval=np.nan)
 
+    def filter_zeroes(self):
+        """Set all velocities that are identically zero to be nan."""
+        self.U[self.U == 0] = np.nan
+        self.V[self.V == 0] = np.nan
+        self.W[self.W == 0] = np.nan
+
     def interpolate_zeroes(self):
         """The raw data contains regions with velocity identical
         to zero. These are non physical and can be removed by
         interpolation.
         """
-        # Set the zeros to nans
-        self.U[self.U == 0] = np.nan
-        self.V[self.V == 0] = np.nan
-        self.W[self.W == 0] = np.nan
-
         inpainter = Inpainter()
         inpainter.paint(self)
 
@@ -817,16 +818,16 @@ class Inpainter(object):
         interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
         return interpolator
 
-    def paint_by_label(self, run, processors=10):
+    def paint_by_label(self, run, sub=np.s_[...], processors=10):
         """Like self.paint, but isolates invalid regions and
         constructs an interpolator for each one.
 
         If necessary we can multiprocess this method.
         """
-        invalid = np.isnan(run.U)
+        invalid = np.isnan(run.U[sub])
 
-        coords = (run.Z, run.X, run.T)
-        data = (run.U, run.V, run.W)
+        coords = (run.Z[sub], run.X[sub], run.T[sub])
+        data = (run.U[sub], run.V[sub], run.W[sub])
 
         # diagonally connected neighbours
         connection_structure = np.ones((3, 3, 3))
