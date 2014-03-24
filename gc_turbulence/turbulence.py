@@ -794,7 +794,7 @@ class PreProcessor(H5Cache):
         interpolation.
         """
         inpainter = Inpainter()
-        inpainter.paint(self)
+        inpainter.paint_by_label(self)
 
     def write_data(self, path):
         """Save everything to a new hdf5."""
@@ -855,7 +855,7 @@ class Inpainter(object):
         kwarglist = [{'coords': coords,
                       'data': data,
                       'labels': labels,
-                      'i': i} for i in range(n)]
+                      'i': i} for i in range(1, n)]
 
 
         out = parallel_process(inpainter, kwarglist=kwarglist, processors=processors)
