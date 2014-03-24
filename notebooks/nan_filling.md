@@ -235,12 +235,12 @@ We find the valid shell by exploiting the fact that our data is on a
 rectangular grid and using binary dilation:
 
 ```python
-def find_valid_shell(label, iterations=2):
+def find_valid_shell(label):
     """For an n-dimensional boolean input, return an array of the
     same shape that is true on the exterior surface of the true
     volume in the input."""
     # we use two iterations so that we get the corner pieces as well
-    dilation = ndi.binary_dilation(label, iterations=iterations)
+    dilation = ndi.binary_dilation(label, structure=np.ones((3, 3, 3)))
     shell = dilation & ~label
     return shell
 ```
@@ -359,7 +359,7 @@ coords = pp.Z, pp.X, pp.T
 data = pp.U, pp.V, pp.W
 
 # find the complete valid shell
-invalid_with_shell = ndi.binary_dilation(invalid, iterations=2)
+invalid_with_shell = ndi.binary_dilation(invalid, structure=np.ones((3, 3, 3)))
 complete_valid_shell = invalid_with_shell & ~invalid
 # isolate disconnected volumes. A volume consists of an invalid core
 # and a valid shell
@@ -379,7 +379,7 @@ def fillin(volume):
     valid_values = pp.U[shell]
 
     # coordinates of all of the invalid points
-    invalid_points = all_coords[..., shell].T
+    invalid_points = all_coords[..., inside_shell].T
 
     interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
     # this is nan outside of the shell
@@ -427,16 +427,17 @@ invalid = np.isnan(pp.U)
 coords = pp.Z, pp.X, pp.T
 data = pp.U, pp.V, pp.W
 
-invalid_with_shell = ndi.binary_dilation(invalid, iterations=2)
+invalid_with_shell = ndi.binary_dilation(invalid, structure=np.ones((3, 3, 3)))
 complete_valid_shell = invalid_with_shell & ~invalid
 labels, n = ndi.label(invalid_with_shell)
 slices = ndi.find_objects(labels)
 
 def interpolate_region(slice):
     nans = invalid[slice]
+    shell = complete_valid_shell[slice]
 
-    valid_points = np.vstack(c[slice][complete_valid_shell[slice]] for c in coords).T
-    valid_values = pp.U[slice][complete_valid_shell[slice]]
+    valid_points = np.vstack(c[slice][shell] for c in coords).T
+    valid_values = pp.U[slice][shell]
 
     interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
 
