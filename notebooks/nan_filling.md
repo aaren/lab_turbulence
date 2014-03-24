@@ -328,12 +328,156 @@ run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
 run.load()
 pp = g.PreProcessor(run)
 pp.extract_valid_region()
-
-inpainter = g.turbulence.Inpainter()
-
 pp.interpolate_zeroes()
-
 ```
+
+### Performance
+
+This is slow. Our single interpolator method evaluates a lot of
+space on the exterior of the valid shells. Our patch by patch method
+calculates a binary dilation for each patch, which is time consuming
+over ~5000 patches.
+
+`ndimage.find_objects` returns a slice that isolates an individual
+object in some space.
+
+```python
+import numpy as np
+import gc_turbulence as g
+import scipy.ndimage as ndi
+import scipy.interpolate as interp
+
+run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
+run.load()
+pp = g.PreProcessor(run)
+pp.extract_valid_region()
+pp.filter_zeroes()
+# pp.interpolate_zeroes()
+
+invalid = np.isnan(pp.U)
+coords = pp.Z, pp.X, pp.T
+data = pp.U, pp.V, pp.W
+
+# find the complete valid shell
+invalid_with_shell = ndi.binary_dilation(invalid, iterations=2)
+complete_valid_shell = invalid_with_shell & ~invalid
+# isolate disconnected volumes. A volume consists of an invalid core
+# and a valid shell
+volumes, n = ndi.label(invalid_with_shell)
+
+all_coords = np.concatenate([c[None] for c in coords])
+
+def fillin(volume):
+    """Construct the interpolator for a single shell and evaluate
+    inside."""
+    # construct the interpolator for a single shell
+    shell = volume & ~invalid
+    inside_shell = volume & invalid
+
+    valid_points = all_coords[..., shell].T
+    # valid_values = np.vstack(d[shell] for d in data).T
+    valid_values = pp.U[shell]
+
+    # coordinates of all of the invalid points
+    invalid_points = all_coords[..., shell].T
+
+    interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
+    # this is nan outside of the shell
+    invalid_values = interpolator(invalid_points)
+    return invalid_values
+
+    pp.U[inside_shell] = invalid_values
+    return
+    in_shell = ~np.isnan(invalid_values)
+    # XXX: how do we make in_shell index the structured array?
+    # this doesn't work because we're actually assigning to a copy
+    # pp.U[invalid][in_shell] = invalid_values[in_shell]
+    # need to use flat indexing
+    # see https://stackoverflow.com/a/17050613/1157089
+    pp.U.flat[np.flatnonzero(invalid)[in_shell]] = invalid_values[in_shell]
+
+
+def fillall(n=n):
+    for i in range(1, n):
+        print "# {} \r".format(i),
+        sys.stdout.flush()
+        fillin(volumes==i)
+```
+
+Alternately we can use `find_objects`. We binary dilate the invalid
+data so that there is some valid data around it. We then label this
+and get the slices from find objects. For each slice we construct an
+interpolator from the points that are in the valid shell and
+interpolate the points that are invalid.
+
+```python
+import numpy as np
+import gc_turbulence as g
+import scipy.ndimage as ndi
+import scipy.interpolate as interp
+
+run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
+run.load()
+pp = g.PreProcessor(run)
+pp.extract_valid_region()
+pp.filter_zeroes()
+# pp.interpolate_zeroes()
+
+invalid = np.isnan(pp.U)
+coords = pp.Z, pp.X, pp.T
+data = pp.U, pp.V, pp.W
+
+invalid_with_shell = ndi.binary_dilation(invalid, iterations=2)
+complete_valid_shell = invalid_with_shell & ~invalid
+labels, n = ndi.label(invalid_with_shell)
+slices = ndi.find_objects(labels)
+
+def interpolate_region(slice):
+    nans = invalid[slice]
+
+    valid_points = np.vstack(c[slice][complete_valid_shell[slice]] for c in coords).T
+    valid_values = pp.U[slice][complete_valid_shell[slice]]
+
+    interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
+
+    invalid_points = np.vstack(c[slice][nans] for c in coords).T
+    invalid_values = interpolator(invalid_points).astype(valid_values.dtype)
+
+    # TODO: multiproc here
+
+    pp.U[slice][nans] = invalid_values
+
+    ## PROBLEM: the slice might contain points that are outside of
+    ## the shell. These points will be over written with nan
+    ## regardless of their original state. We need to not overwrite
+    ## these points if they have already been filled in by
+    ## interpolation from another shell.
+    ##
+
+    ## Is this guaranteed not to happen from the dilation that we
+    ## have used?
+
+    ## No. But we can just run the process repeatedly until the data
+    ## doesn't contain nans
+
+    # np.putmask(pp.U[slice][nans], ~np.isnan(invalid_values), invalid_values)
+    # copy interpolated values to U only if they aren't nan
+    # np.copyto(pp.U[slice][nans], invalid_values, where=~np.isnan(invalid_values))
+
+def intall():
+    for i, slice in enumerate(slices):
+        print "# {} \r".format(i),
+        sys.stdout.flush()
+        interpolate_region(slice)
+```
+
+This took 15 mins for our test run. We could parallelise it,
+calculating the invalid values in parallel and storing them in
+memory, then assigning to the array when all are calculated.
+
+This method still hangs on non convex regions, but not for as long.
+There might be a way to reduce the hang by ignoring points that
+dont' contribute much.
 
 
 ### Validation
