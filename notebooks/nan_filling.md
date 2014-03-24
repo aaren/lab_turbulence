@@ -480,6 +480,30 @@ This method still hangs on non convex regions, but not for as long.
 There might be a way to reduce the hang by ignoring points that
 dont' contribute much.
 
+Got a big performance gain by computing the shell properly. I was
+doing two iterations instead of defining a diagonally connected
+structure. This roughly halves the number of points to construct the
+interpolator, which has a big effect on time because this scales as
+N^2.
+
+The `interpolate_region` method is by far the fastest. It doesn't
+remove all of the nans in a single pass because a single slice can
+have bits of another volume in it. You can add an extra step to the
+method to only calculate the interpolation only for points that are
+explicitly part of the volume that the slice references but this is
+computationally expensive as it has to be done in the inner loop. It
+is much quicker to perform multiple passes.
+
+TODO on Tuesday:
+
+- Is single core version of `interpolate_region` faster?
+- Write into main code, use separate file if necessary.
+- Re-process a load of runs.
+- Clean up this notebook into descriptive method.
+
+- Write in histograms to analysis and rewrite 2d_pdf to call them.
+- Histograms for u, w, magnitude, var(v)
+
 
 ### Validation
 

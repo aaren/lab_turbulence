@@ -86,6 +86,8 @@ def main_parallel():
     pool = mp.Pool(processes=20)
     result = pool.imap_unordered(interpolate_region, slices)
 
+    # TODO: try single processing - is it worth the overhead?
+
     pool.close()
     for i, output in enumerate(result):
         slice, invalid_values = output
