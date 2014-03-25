@@ -19,7 +19,9 @@ data = pp.U, pp.V, pp.W
 
 all_coords = np.concatenate([c[None] for c in coords])
 
-invalid = np.isnan(pp.U)
+data = pp.U[:, :, 2000:-2000]
+
+invalid = np.isnan(data)
 invalid_with_shell = ndi.binary_dilation(invalid, iterations=1, structure=np.ones((3, 3, 3)))
 complete_valid_shell = invalid_with_shell & ~invalid
 
@@ -27,12 +29,13 @@ volumes, n = ndi.label(invalid_with_shell)
 slices = ndi.find_objects(volumes)
 
 
+
 def interpolate_region(slice):
     nans = invalid[slice]
     shell = complete_valid_shell[slice]
 
     valid_points = np.vstack(c[slice][shell] for c in coords).T
-    valid_values = pp.U[slice][shell]
+    valid_values = data[slice][shell]
 
     interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
 
@@ -51,7 +54,7 @@ def fillin(volume):
 
     valid_points = all_coords[..., shell].T
     # valid_values = np.vstack(d[shell] for d in data).T
-    valid_values = pp.U[shell]
+    valid_values = data[shell]
 
     # coordinates of all of the invalid points
     invalid_points = all_coords[..., inside_shell].T
@@ -74,17 +77,17 @@ def main_fillin():
         sys.stdout.flush()
         volume, invalid_values = output
         inside_shell = volume & invalid
-        pp.U[inside_shell] = invalid_values
+        data[inside_shell] = invalid_values
     pool.join()
     print "\n"
-    print "nans remaining: ", np.where(np.isnan(pp.U))[0].size
+    print "nans remaining: ", np.where(np.isnan(data))[0].size
 
 
 def construct_valid(slice):
     shell = complete_valid_shell[slice]
 
     valid_points = np.vstack(c[slice][shell] for c in coords).T
-    valid_values = pp.U[slice][shell]
+    valid_values = data[slice][shell]
 
     return slice, valid_points, valid_values
 
@@ -115,17 +118,17 @@ def alt_main_parallel():
         invalid_points = np.vstack(c[slice][nans] for c in coords).T
         invalid_values = interpolator(invalid_points).astype(np.float32)
 
-        pp.U[slice][nans] = invalid_values
+        data[slice][nans] = invalid_values
 
     pool.join()
     print "\n"
-    nan_remaining = np.where(np.isnan(pp.U))[0].size
+    nan_remaining = np.where(np.isnan(data))[0].size
     print "nans remaining: ", nan_remaining
     if nan_remaining != 0:
         global invalid
         global complete_valid_shell
         global slices
-        invalid = np.isnan(pp.U)
+        invalid = np.isnan(data)
         invalid_with_shell = ndi.binary_dilation(invalid, iterations=1, structure=np.ones((3, 3, 3)))
         complete_valid_shell = invalid_with_shell & ~invalid
 
@@ -152,17 +155,17 @@ def main_parallel():
         print "# {} {}\r".format(i, slice),
         sys.stdout.flush()
         nans = invalid[slice]
-        pp.U[slice][nans] = invalid_values
+        data[slice][nans] = invalid_values
 
     pool.join()
     print "\n"
-    nan_remaining = np.where(np.isnan(pp.U))[0].size
+    nan_remaining = np.where(np.isnan(data))[0].size
     print "nans remaining: ", nan_remaining
     if nan_remaining != 0:
         global invalid
         global complete_valid_shell
         global slices
-        invalid = np.isnan(pp.U)
+        invalid = np.isnan(data)
         invalid_with_shell = ndi.binary_dilation(invalid, iterations=1, structure=np.ones((3, 3, 3)))
         complete_valid_shell = invalid_with_shell & ~invalid
 
@@ -185,16 +188,16 @@ def main_single():
         print "# {} {}\r".format(i, slice),
         sys.stdout.flush()
         nans = invalid[slice]
-        pp.U[slice][nans] = invalid_values
+        data[slice][nans] = invalid_values
 
     print "\n"
-    nan_remaining = np.where(np.isnan(pp.U))[0].size
+    nan_remaining = np.where(np.isnan(data))[0].size
     print "nans remaining: ", nan_remaining
     if nan_remaining != 0:
         global invalid
         global complete_valid_shell
         global slices
-        invalid = np.isnan(pp.U)
+        invalid = np.isnan(data)
         invalid_with_shell = ndi.binary_dilation(invalid, iterations=1, structure=np.ones((3, 3, 3)))
         complete_valid_shell = invalid_with_shell & ~invalid
 
@@ -210,7 +213,7 @@ def main():
         sys.stdout.flush()
         slice, invalid_values = interpolate_region(slice)
         nans = invalid[slice]
-        pp.U[slice][nans] = invalid_values
+        data[slice][nans] = invalid_values
 
 
 if __name__ == '__main__':
