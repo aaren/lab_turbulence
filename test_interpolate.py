@@ -322,6 +322,8 @@ def main():
 
 
 if __name__ == '__main__':
+    func = sys.argv[1]
+    locals()[func]()
     # 2m10 to complete laptop
     # main_parallel()
 
@@ -332,7 +334,7 @@ if __name__ == '__main__':
     # alt_alt_main_parallel()
 
     # 3m56 to complete laptop
-    full_state_main_parallel()
+    # full_state_main_parallel()
 
     # main_single()
     # main_fillin()
