@@ -325,15 +325,19 @@ if __name__ == '__main__':
     func = sys.argv[1]
     locals()[func]()
     # 2m10 to complete laptop
+    # 1m2  to complete dad
     # main_parallel()
 
     # 2m58 to complete laptop
+    # 1m42 to complete dad
     # alt_main_parallel()
 
     # 3m31 to complete laptop
+    # 2m6  to complete dad
     # alt_alt_main_parallel()
 
     # 3m56 to complete laptop
+    # 1m18 to complete dad
     # full_state_main_parallel()
 
     # main_single()
