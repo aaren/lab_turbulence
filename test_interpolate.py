@@ -45,6 +45,21 @@ def interpolate_region(slice):
     return slice, invalid_values
 
 
+def full_state_interpolate_region((slice, complete_valid_shell, invalid)):
+    nans = invalid[slice]
+    shell = complete_valid_shell[slice]
+
+    valid_points = np.vstack(c[slice][shell] for c in coords).T
+    valid_values = data[slice][shell]
+
+    interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
+
+    invalid_points = np.vstack(c[slice][nans] for c in coords).T
+    invalid_values = interpolator(invalid_points).astype(valid_values.dtype)
+
+    return slice, invalid_values
+
+
 def fillin(volume):
     """Construct the interpolator for a single shell and evaluate
     inside."""
@@ -227,6 +242,44 @@ def main_parallel():
         main_parallel()
 
 
+def full_state_main_parallel():
+    global n
+    print n
+    pool = mp.Pool(processes=20)
+    args = ((slice, complete_valid_shell, invalid) for slice in slices)
+    result = pool.imap_unordered(full_state_interpolate_region, args)
+
+    # TODO: try single processing - is it worth the overhead?
+    # The problem with single processing is that slow to calculate
+    # volumes block the execution of fast ones. It makes a lot of
+    # sense to multiprocess here.
+
+    pool.close()
+    for i, output in enumerate(result):
+        slice, invalid_values = output
+        print "# {} {}\r".format(i, slice),
+        sys.stdout.flush()
+        nans = invalid[slice]
+        data[slice][nans] = invalid_values
+
+    pool.join()
+    print "\n"
+    nan_remaining = np.where(np.isnan(data))[0].size
+    print "nans remaining: ", nan_remaining
+    if nan_remaining != 0:
+        global invalid
+        global complete_valid_shell
+        global slices
+        invalid = np.isnan(data)
+        invalid_with_shell = ndi.binary_dilation(invalid, iterations=1, structure=np.ones((3, 3, 3)))
+        complete_valid_shell = invalid_with_shell & ~invalid
+
+        labels, n = ndi.label(invalid_with_shell)
+        slices = ndi.find_objects(labels)
+
+        main_parallel()
+
+
 def main_single():
     global n
     print n
@@ -271,10 +324,14 @@ def main():
 if __name__ == '__main__':
     # 2m10 to complete laptop
     # main_parallel()
+
     # 2m58 to complete laptop
-    alt_main_parallel()
+    # alt_main_parallel()
+
     # 3m31 to complete laptop
     # alt_alt_main_parallel()
+
+    full_state_main_parallel()
 
     # main_single()
     # main_fillin()
