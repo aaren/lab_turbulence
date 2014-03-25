@@ -86,24 +86,27 @@ def construct_valid(slice):
     valid_points = np.vstack(c[slice][shell] for c in coords).T
     valid_values = pp.U[slice][shell]
 
-    return valid_points, valid_values
+    return slice, valid_points, valid_values
 
 
-def construct_interpolator((points, values)):
-    return interp.LinearNDInterpolator(points, values)
+def construct_interpolator((slice, points, values)):
+    return slice, interp.LinearNDInterpolator(points, values)
 
 
 def alt_main_parallel():
-    import itertools
-
     global n
     print n
     pool = mp.Pool(processes=20)
     valid_gen = (construct_valid(slice) for slice in slices)
+
     interpolators = pool.imap_unordered(construct_interpolator, valid_gen)
+    # can't use imap_unordered if we're relying on ordered output
+    # later so we keep the slice with the interpolator
+    # interpolators = pool.imap(construct_interpolator, valid_gen)
+
     pool.close()
 
-    for i, output in enumerate(itertools.izip(slices, interpolators)):
+    for i, output in enumerate(interpolators):
         slice, interpolator = output
         print "# {} {}\r".format(i, slice),
         sys.stdout.flush()
