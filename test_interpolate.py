@@ -45,7 +45,8 @@ def interpolate_region(slice):
     return slice, invalid_values
 
 
-def full_state_interpolate_region((slice, complete_valid_shell, invalid)):
+def full_state_interpolate_region((slice, complete_valid_shell,
+                                   invalid, coords, data)):
     nans = invalid[slice]
     shell = complete_valid_shell[slice]
 
@@ -246,7 +247,8 @@ def full_state_main_parallel():
     global n
     print n
     pool = mp.Pool(processes=20)
-    args = ((slice, complete_valid_shell, invalid) for slice in slices)
+    args = ((slice, complete_valid_shell,
+             invalid, coords, data) for slice in slices)
     result = pool.imap_unordered(full_state_interpolate_region, args)
 
     # TODO: try single processing - is it worth the overhead?
