@@ -96,6 +96,8 @@ def construct_interpolator((points, values)):
 def alt_main_parallel():
     import itertools
 
+    global n
+    print n
     pool = mp.Pool(processes=20)
     valid_gen = (construct_valid(slice) for slice in slices)
     interpolators = pool.imap_unordered(construct_interpolator, valid_gen)
@@ -113,6 +115,21 @@ def alt_main_parallel():
         pp.U[slice][nans] = invalid_values
 
     pool.join()
+    print "\n"
+    nan_remaining = np.where(np.isnan(pp.U))[0].size
+    print "nans remaining: ", nan_remaining
+    if nan_remaining != 0:
+        global invalid
+        global complete_valid_shell
+        global slices
+        invalid = np.isnan(pp.U)
+        invalid_with_shell = ndi.binary_dilation(invalid, iterations=1, structure=np.ones((3, 3, 3)))
+        complete_valid_shell = invalid_with_shell & ~invalid
+
+        labels, n = ndi.label(invalid_with_shell)
+        slices = ndi.find_objects(labels)
+
+        alt_main_parallel()
 
 
 def main_parallel():
