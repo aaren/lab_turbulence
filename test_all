@@ -1,0 +1,6 @@
+#!/bin/bash
+
+(time python test_interpolate.py main_parallel) >> log 2>&1
+(time python test_interpolate.py alt_main_parallel) >> log 2>&1
+(time python test_interpolate.py alt_alt_main_parallel) >> log 2>&1
+(time python test_interpolate.py full_state_main_parallel) >> log 2>&1
