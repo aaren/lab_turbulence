@@ -55,12 +55,12 @@ class Inpainter(object):
         pp = self.run
         self.coords = pp.Z, pp.X, pp.T
         # TODO: use all data
-        self.data = pp.U
+        self.data = pp.U, pp.V, pp.W
 
         # TODO: determine invalid from full data
         # I think they are all coincident but we could use OR.
         # or we could check for coincidence and log if not.
-        self.invalid = np.isnan(pp.U)
+        self.invalid = np.isnan(self.data[0])
 
         connections = np.ones((3, 3, 3))  # connect diagonals
         invalid_with_shell = ndi.binary_dilation(self.invalid,
@@ -80,7 +80,7 @@ class Inpainter(object):
         shell = self.complete_valid_shell[slice]
 
         valid_points = np.vstack(c[slice][shell] for c in self.coords).T
-        valid_values = self.data[slice][shell]
+        valid_values = np.vstack(d[slice][shell] for d in self.data).T
 
         return valid_points, valid_values
 
@@ -103,13 +103,15 @@ class Inpainter(object):
         Only writes where values are invalid to start with.
         """
         nans = self.invalid[slice]
-        # TODO: assign v, w
-        self.data[slice][nans] = self.compute_values(slice, nans, interpolator)
+        interpolated_values = self.compute_values(slice, nans, interpolator)
+
+        for i, d in enumerate(self.data):
+            d[slice][nans] = interpolated_values[:, i]
 
     @property
     def nan_remaining(self):
         """How many nans are remaining in the data."""
-        return np.where(np.isnan(self.data))[0].size
+        return sum(np.isnan(d).sum() for d in self.data)
 
     def process_parallel(self, processors=20):
         """Fill in the invalid regions of the data, using parallel
