@@ -9,7 +9,14 @@ import gc_turbulence as g
 
 
 class Inpainter(object):
+    """Fills holes in gridded data (represented by nan) by
+    performing linear interpolation using only the set of points
+    surrounding each hole.
+    """
     def __init__(self, run):
+        """run has attributes representing coordinates (X, Z, T)
+        and data (U, V, W).
+        """
         self.run = run
         self.setup()
 
@@ -24,10 +31,12 @@ class Inpainter(object):
         We label all of the nan values in the data (self.invalid),
         then find the valid points that directly surround them
         (self.complete_valid_shell), as this is all we need for
-        linear interpolation.
+        linear interpolation. We refer to the surrounding valid
+        points as the valid shell.
 
-        We separate the invalid points into clusters (volumes), as
-        it is wasteful to use non-local points in the interpolator.
+        We separate the shells and the invalid points within into
+        clusters (volumes), as it is wasteful to use non-local
+        points in the interpolator.
 
         We could select points to use in interpolation by using a
         boolean array computed from volumes == label, however it is
@@ -53,8 +62,7 @@ class Inpainter(object):
         # or we could check for coincidence and log if not.
         self.invalid = np.isnan(pp.U)
 
-        # connect diagonals
-        connections = np.ones((3, 3, 3))
+        connections = np.ones((3, 3, 3))  # connect diagonals
         invalid_with_shell = ndi.binary_dilation(self.invalid,
                                                  structure=connections)
         self.complete_valid_shell = invalid_with_shell & ~self.invalid
@@ -139,12 +147,18 @@ class Inpainter(object):
             self.setup()
             self.process_parallel()
 
+    def paint(self, processors=20):
+        """Fill in the invalid (nan) regions of the data. """
+        self.process_parallel(processors=processors)
+
 
 def construct_interpolator((slice, coordinates, values)):
     """Construct a linear interpolator for given coordinates and values.
 
     This function is here because it needs to be pickleable for
-    multiprocessing.  slice is passed as state that we need for post
+    multiprocessing.
+
+    slice is just passed through as state that we need for post
     processing the multiprocessing output.
     """
     return slice, interp.LinearNDInterpolator(coordinates, values)
