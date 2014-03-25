@@ -96,13 +96,65 @@ def construct_interpolator((slice, points, values)):
     return slice, interp.LinearNDInterpolator(points, values)
 
 
+def full_construct_interpolator((complete_valid_shell, slice)):
+    shell = complete_valid_shell[slice]
+
+    valid_points = np.vstack(c[slice][shell] for c in coords).T
+    valid_values = data[slice][shell]
+    return slice, interp.LinearNDInterpolator(valid_points, valid_values)
+
+
 def alt_main_parallel():
     global n
     print n
+
     pool = mp.Pool(processes=20)
     valid_gen = (construct_valid(slice) for slice in slices)
-
     interpolators = pool.imap_unordered(construct_interpolator, valid_gen)
+
+    # can't use imap_unordered if we're relying on ordered output
+    # later so we keep the slice with the interpolator
+    # interpolators = pool.imap(construct_interpolator, valid_gen)
+
+    pool.close()
+
+    for i, output in enumerate(interpolators):
+        slice, interpolator = output
+        print "# {} {}\r".format(i, slice),
+        sys.stdout.flush()
+
+        nans = invalid[slice]
+        invalid_points = np.vstack(c[slice][nans] for c in coords).T
+        invalid_values = interpolator(invalid_points).astype(np.float32)
+
+        data[slice][nans] = invalid_values
+
+    pool.join()
+    print "\n"
+    nan_remaining = np.where(np.isnan(data))[0].size
+    print "nans remaining: ", nan_remaining
+    if nan_remaining != 0:
+        global invalid
+        global complete_valid_shell
+        global slices
+        invalid = np.isnan(data)
+        invalid_with_shell = ndi.binary_dilation(invalid, iterations=1, structure=np.ones((3, 3, 3)))
+        complete_valid_shell = invalid_with_shell & ~invalid
+
+        labels, n = ndi.label(invalid_with_shell)
+        slices = ndi.find_objects(labels)
+
+        alt_main_parallel()
+
+
+def alt_alt_main_parallel():
+    global n
+    print n
+
+    pool = mp.Pool(processes=20)
+
+    input_gen = ((complete_valid_shell, slice) for slice in slices)
+    interpolators = pool.imap_unordered(full_construct_interpolator, input_gen)
     # can't use imap_unordered if we're relying on ordered output
     # later so we keep the slice with the interpolator
     # interpolators = pool.imap(construct_interpolator, valid_gen)
