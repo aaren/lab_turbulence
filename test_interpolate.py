@@ -80,6 +80,41 @@ def main_fillin():
     print "nans remaining: ", np.where(np.isnan(pp.U))[0].size
 
 
+def construct_valid(slice):
+    shell = complete_valid_shell[slice]
+
+    valid_points = np.vstack(c[slice][shell] for c in coords).T
+    valid_values = pp.U[slice][shell]
+
+    return valid_points, valid_values
+
+
+def construct_interpolator((points, values)):
+    return interp.LinearNDInterpolator(points, values)
+
+
+def alt_main_parallel():
+    import itertools
+
+    pool = mp.Pool(processes=20)
+    valid_gen = (construct_valid(slice) for slice in slices)
+    interpolators = pool.imap_unordered(construct_interpolator, valid_gen)
+    pool.close()
+
+    for i, output in enumerate(itertools.izip(slices, interpolators)):
+        slice, interpolator = output
+        print "# {} {}\r".format(i, slice),
+        sys.stdout.flush()
+
+        nans = invalid[slice]
+        invalid_points = np.vstack(c[slice][nans] for c in coords).T
+        invalid_values = interpolator(invalid_points).astype(np.float32)
+
+        pp.U[slice][nans] = invalid_values
+
+    pool.join()
+
+
 def main_parallel():
     global n
     print n
@@ -159,5 +194,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main_parallel()
+    # main_parallel()
+    alt_main_parallel()
+    # main_single()
     # main_fillin()
