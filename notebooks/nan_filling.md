@@ -315,22 +315,6 @@ plt.figure()
 plt.contourf(xs, zs, ucs, 50)
 ```
 
-### Implementation
-
-[This commit](www.github.com/aaren/lab_turbulence/....)
-
-Usage:
-
-```python
-import numpy as np
-import gc_turbulence as g
-run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
-run.load()
-pp = g.PreProcessor(run)
-pp.extract_valid_region()
-pp.interpolate_zeroes()
-```
-
 ### Performance
 
 This is slow. Our single interpolator method evaluates a lot of
@@ -500,11 +484,52 @@ TODO on Tuesday:
 
 - Write into main code, use separate file if necessary.
 
+- Rescale time axis for interpolation
+
+- Deal with anomalous high / low values as well.
+
 - Re-process a load of runs.
 - Clean up this notebook into descriptive method.
 
 - Write in histograms to analysis and rewrite 2d_pdf to call them.
 - Histograms for u, w, magnitude, var(v)
+
+
+### Implementation
+
+[This commit](www.github.com/aaren/lab_turbulence/....)
+
+Usage:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+import gc_turbulence as g
+
+run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
+run.load()
+pp = g.PreProcessor(run)
+pp.extract_valid_region()
+pp.filter_zeroes()
+
+# find the time index with the most invalid values
+import scipy.stats as stats
+mode_index, mode_count = stats.mode(np.where(np.isnan(pp.U))[-1])
+idx = int(mode_index[0])
+
+sample_2d = np.s_[..., idx]
+us = pp.U[sample_2d]
+xs = pp.X[sample_2d]
+zs = pp.Z[sample_2d]
+
+fig, axes = plt.subplots(ncols=2)
+axes[0].contourf(xs, zs, us, 50)
+plt.draw()
+
+pp.interpolate_nan(sub_region=np.s[:, :, idx - 100: idx + 100])
+
+axes[1].contourf(xs, zs, us, 50)
+```
 
 
 ### Validation
@@ -514,6 +539,20 @@ Is our method actually working?
 We could take some complete data (no nans) and set some of it equal to
 nan, then apply the interpolation above and see how close we get to
 the actual values.
+
+
+### Filtering anomalies
+
+```python
+import scipy.ndimage as ndi
+
+o = ndi.uniform_filter(pp.U, size=3) / 9
+thresh = 0.1
+anomaly = np.where(np.abs(o - pp.U) > thresh)
+pp.U[anomaly] = np.nan
+# run nan interpolation again
+
+```
 
 
 ### Extension
