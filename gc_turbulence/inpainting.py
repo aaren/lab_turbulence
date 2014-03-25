@@ -14,7 +14,35 @@ class Inpainter(object):
         self.setup()
 
     def setup(self):
-        # pp.interpolate_zeroes()
+        """Perform the initialisation needed to interpolate over
+        regions of nan.
+
+        Linear interpolation scales with N^dimension, so we want to
+        limit the number of points that we use in the interpolator
+        as much as possible.
+
+        We label all of the nan values in the data (self.invalid),
+        then find the valid points that directly surround them
+        (self.complete_valid_shell), as this is all we need for
+        linear interpolation.
+
+        We separate the invalid points into clusters (volumes), as
+        it is wasteful to use non-local points in the interpolator.
+
+        We could select points to use in interpolation by using a
+        boolean array computed from volumes == label, however it is
+        much faster to index a large array with a slice object
+        (self.slices).
+
+        N.B. the slices don't isolate the volumes - each slice is
+        only guaranteed to contain at least one complete volume and
+        could capture parts of others. This means that we will have
+        some overwriting of points where volumes overlap, possibly
+        with nan.
+
+        To overcome this problem we just re-run the interpolation on
+        any remaining nans.
+        """
         pp = self.run
         self.coords = pp.Z, pp.X, pp.T
         # TODO: use all data
@@ -24,6 +52,7 @@ class Inpainter(object):
         # I think they are all coincident but we could use OR.
         # or we could check for coincidence and log if not.
         self.invalid = np.isnan(pp.U)
+
         # connect diagonals
         connections = np.ones((3, 3, 3))
         invalid_with_shell = ndi.binary_dilation(self.invalid,
@@ -34,56 +63,91 @@ class Inpainter(object):
         volumes, self.n = ndi.label(invalid_with_shell)
         # and find the slice that captures them
         self.slices = ndi.find_objects(volumes)
-        # N.B this doesn't isolate the volumes - each slice is only
-        # guaranteed to contain at least one complete volume and
-        # could capture parts of others.
+        # N.B. doesn't isolate volumes - see docstring
 
-    def process_parallel(self):
-        print self.n
-        pool = mp.Pool(processes=20)
-        valid_gen = (self.construct_valid(slice) for slice in self.slices)
-        interpolators = pool.imap_unordered(construct_interpolator, valid_gen)
-        pool.close()
-
-        # TODO: try single processing - is it worth the overhead?
-        # The problem with single processing is that slow to calculate
-        # volumes block the execution of fast ones. It makes a lot of
-        # sense to multiprocess here.
-
-        for i, output in enumerate(interpolators):
-            slice, interpolator = output
-            print "# {} {}\r".format(i, slice),
-            sys.stdout.flush()
-
-            nans = self.invalid[slice]
-            invalid_points = np.vstack(c[slice][nans] for c in self.coords).T
-            invalid_values = interpolator(invalid_points).astype(np.float32)
-
-            # TODO: assign v, w
-            self.data[slice][nans] = invalid_values
-
-        pool.join()
-
-        print "\n"
-        nan_remaining = np.where(np.isnan(self.data))[0].size
-        print "nans remaining: ", nan_remaining
-
-        # keep going until there are no more nans
-        if nan_remaining != 0:
-            self.setup()
-            self.process_parallel()
-
-    def construct_valid(self, slice):
+    def construct_points(self, slice):
+        """Find the valid shell within a given slice and return the
+        coordinates and values of the points in the shell.
+        """
         shell = self.complete_valid_shell[slice]
 
         valid_points = np.vstack(c[slice][shell] for c in self.coords).T
         valid_values = self.data[slice][shell]
 
-        return slice, valid_points, valid_values
+        return valid_points, valid_values
+
+    def compute_values(self, slice, nans, interpolator):
+        """Compute the interpolated values for a given interpolator
+        and the slice that it is valid inside.
+
+        The interpolator isn't valid across the whole slice, just a
+        region of nans contained within it, so we only evaluate the
+        interpolator at the coordinates of those nans.
+        """
+        invalid_points = np.vstack(c[slice][nans] for c in self.coords).T
+        invalid_values = interpolator(invalid_points).astype(np.float32)
+        return invalid_values
+
+    def evaluate_and_write(self, slice, interpolator):
+        """For a given slice, compute the interpolated values and
+        write them to the data array.
+
+        Only writes where values are invalid to start with.
+        """
+        nans = self.invalid[slice]
+        # TODO: assign v, w
+        self.data[slice][nans] = self.compute_values(slice, nans, interpolator)
+
+    @property
+    def nan_remaining(self):
+        """How many nans are remaining in the data."""
+        return np.where(np.isnan(self.data))[0].size
+
+    def process_parallel(self, processors=20):
+        """Fill in the invalid regions of the data, using parallel
+        processing to construct the interpolator for each distinct
+        invalid region.
+
+        The problem with single processing is that slow to calculate
+        volumes block the execution of fast ones. It makes a lot of
+        sense to multiprocess here.
+        """
+        pool = mp.Pool(processes=processors)
+        # arguments for interpolator construction
+        valid_gen = ((slice,) + self.construct_points(slice)
+                     for slice in self.slices)
+        # need imap_unordered to avoid blocking. We have to pass any
+        # state needed in post-processing though.
+        interpolators = pool.imap_unordered(construct_interpolator, valid_gen)
+        pool.close()
+
+        for i, output in enumerate(interpolators):
+            slice, interpolator = output
+            print "Interpolating region # {:05d} / {}\r".format(i, self.n),
+            sys.stdout.flush()
+            self.evaluate_and_write(slice, interpolator)
+
+        pool.join()
+
+        print "\n"
+        remaining = self.nan_remaining
+        print "nans remaining: ", remaining
+
+        # keep going until there are no more nans
+        # TODO: stop if not converge?
+        if remaining != 0:
+            self.setup()
+            self.process_parallel()
 
 
-def construct_interpolator((slice, points, values)):
-    return slice, interp.LinearNDInterpolator(points, values)
+def construct_interpolator((slice, coordinates, values)):
+    """Construct a linear interpolator for given coordinates and values.
+
+    This function is here because it needs to be pickleable for
+    multiprocessing.  slice is passed as state that we need for post
+    processing the multiprocessing output.
+    """
+    return slice, interp.LinearNDInterpolator(coordinates, values)
 
 
 def test():
