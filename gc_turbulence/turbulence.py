@@ -781,12 +781,12 @@ class PreProcessor(H5Cache):
         self.V[self.V == 0] = np.nan
         self.W[self.W == 0] = np.nan
 
-    def interpolate_nan(self):
+    def interpolate_nan(self, sub_region):
         """The raw data contains regions with velocity identical
         to zero. These are non physical and can be removed by
         interpolation.
         """
-        inpainter = Inpainter(self)
+        inpainter = Inpainter(self, sub_region=sub_region)
         inpainter.paint()
 
     def write_data(self, path):

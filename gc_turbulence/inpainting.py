@@ -13,11 +13,15 @@ class Inpainter(object):
     performing linear interpolation using only the set of points
     surrounding each hole.
     """
-    def __init__(self, run):
+    def __init__(self, run, sub_region=None):
         """run has attributes representing coordinates (X, Z, T)
         and data (U, V, W).
+
+        sub_region lets you optionally consider only a sub section
+        of the data by indexing. Default is to take all of the data.
         """
         self.run = run
+        self.sub = sub_region or np.s_[:, :, :]
         self.setup()
 
     def setup(self):
@@ -53,9 +57,9 @@ class Inpainter(object):
         any remaining nans.
         """
         pp = self.run
-        self.coords = pp.Z, pp.X, pp.T
+        self.coords = pp.Z[self.sub], pp.X[self.sub], pp.T[self.sub]
         # TODO: use all data
-        self.data = pp.U, pp.V, pp.W
+        self.data = pp.U[self.sub], pp.V[self.sub], pp.W[self.sub]
 
         # TODO: determine invalid from full data
         # I think they are all coincident but we could use OR.
@@ -133,7 +137,7 @@ class Inpainter(object):
 
         for i, output in enumerate(interpolators):
             slice, interpolator = output
-            print "Interpolating region # {:05d} / {}\r".format(i, self.n),
+            print "Interpolating region # {: >5} / {}\r".format(i, self.n),
             sys.stdout.flush()
             self.evaluate_and_write(slice, interpolator)
 
@@ -172,8 +176,8 @@ def test():
     pp = g.PreProcessor(run)
     pp.extract_valid_region()
     pp.filter_zeroes()
-    painter = Inpainter(pp)
-    painter.process_parallel()
+    painter = Inpainter(pp, sub_region=np.s_[10:-10, :, :1000])
+    painter.paint()
 
 
 if __name__ == "__main__":
