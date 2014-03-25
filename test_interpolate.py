@@ -269,7 +269,12 @@ def main():
 
 
 if __name__ == '__main__':
+    # 2m10 to complete laptop
     # main_parallel()
+    # 2m58 to complete laptop
     alt_main_parallel()
+    # 3m31 to complete laptop
+    # alt_alt_main_parallel()
+
     # main_single()
     # main_fillin()
