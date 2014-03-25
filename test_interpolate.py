@@ -87,6 +87,9 @@ def main_parallel():
     result = pool.imap_unordered(interpolate_region, slices)
 
     # TODO: try single processing - is it worth the overhead?
+    # The problem with single processing is that slow to calculate
+    # volumes block the execution of fast ones. It makes a lot of
+    # sense to multiprocess here.
 
     pool.close()
     for i, output in enumerate(result):
@@ -112,6 +115,38 @@ def main_parallel():
         slices = ndi.find_objects(labels)
 
         main_parallel()
+
+
+def main_single():
+    global n
+    print n
+    import itertools
+    result = itertools.imap(interpolate_region, slices)
+
+    # TODO: try single processing - is it worth the overhead?
+
+    for i, output in enumerate(result):
+        slice, invalid_values = output
+        print "# {} {}\r".format(i, slice),
+        sys.stdout.flush()
+        nans = invalid[slice]
+        pp.U[slice][nans] = invalid_values
+
+    print "\n"
+    nan_remaining = np.where(np.isnan(pp.U))[0].size
+    print "nans remaining: ", nan_remaining
+    if nan_remaining != 0:
+        global invalid
+        global complete_valid_shell
+        global slices
+        invalid = np.isnan(pp.U)
+        invalid_with_shell = ndi.binary_dilation(invalid, iterations=1, structure=np.ones((3, 3, 3)))
+        complete_valid_shell = invalid_with_shell & ~invalid
+
+        labels, n = ndi.label(invalid_with_shell)
+        slices = ndi.find_objects(labels)
+
+        main_single()
 
 
 def main():

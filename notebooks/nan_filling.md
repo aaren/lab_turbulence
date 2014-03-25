@@ -496,8 +496,10 @@ is much quicker to perform multiple passes.
 
 TODO on Tuesday:
 
-- Is single core version of `interpolate_region` faster?
+- Is single core version of `interpolate_region` faster? No.
+
 - Write into main code, use separate file if necessary.
+
 - Re-process a load of runs.
 - Clean up this notebook into descriptive method.
 
