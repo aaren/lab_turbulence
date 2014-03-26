@@ -618,6 +618,7 @@ class PreProcessor(H5Cache):
         searches for the first time at which this exceeds a
         threshold.
         """
+        # TODO: make more general, find the peak instead
         threshold = 0.01  # m / s
         column_avg = self.W.mean(axis=0)
         exceed = column_avg > threshold
