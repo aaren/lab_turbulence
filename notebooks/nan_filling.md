@@ -502,6 +502,7 @@ TODO on Tuesday:
 Usage:
 
 ```python
+%matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 import gc_turbulence as g
@@ -522,13 +523,24 @@ us = pp.U[sample_2d]
 xs = pp.X[sample_2d]
 zs = pp.Z[sample_2d]
 
-fig, axes = plt.subplots(ncols=2)
+fig, axes = plt.subplots(ncols=3)
+# plot the un treated data
 axes[0].contourf(xs, zs, us, 50)
-plt.draw()
 
-pp.interpolate_nan(sub_region=np.s[:, :, idx - 100: idx + 100])
+sub=np.s_[:, :, idx - 100: idx + 100]
 
+# plot the interpolated data
+pp.interpolate_nan(sub_region=sub, scale=1)
 axes[1].contourf(xs, zs, us, 50)
+
+# re-extract and interpolate with different time scaled with front
+# speed
+pp.extract_valid_region()
+pp.filter_zeroes()
+
+pp.interpolate_nan(sub_region=sub, scale='auto')
+axes[2].contourf(xs, zs, us, 50)
+plt.draw()
 ```
 
 
@@ -540,19 +552,6 @@ We could take some complete data (no nans) and set some of it equal to
 nan, then apply the interpolation above and see how close we get to
 the actual values.
 
-
-### Filtering anomalies
-
-```python
-import scipy.ndimage as ndi
-
-o = ndi.uniform_filter(pp.U, size=3) / 9
-thresh = 0.1
-anomaly = np.where(np.abs(o - pp.U) > thresh)
-pp.U[anomaly] = np.nan
-# run nan interpolation again
-
-```
 
 
 ### Extension
