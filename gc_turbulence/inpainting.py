@@ -13,15 +13,29 @@ class Inpainter(object):
     performing linear interpolation using only the set of points
     surrounding each hole.
     """
-    def __init__(self, run, sub_region=None):
+    def __init__(self, run, sub_region=None, scale=1):
         """run has attributes representing coordinates (X, Z, T)
         and data (U, V, W).
 
         sub_region lets you optionally consider only a sub section
         of the data by indexing. Default is to take all of the data.
+
+        scale is the factor to multiply the time coordinates by to
+        make them comparable with the spatial coordinates in
+        euclidean space. This should be a characteristic speed of
+        the flow (e.g. the front velocity)
         """
         self.run = run
         self.sub = sub_region or np.s_[:, :, :]
+
+        # factors to scale the run coordinates by (Z, X, T)
+        self.scales = (('Z', 1),
+                       ('X', 1),
+                       ('T', scale))
+
+        self.data_names = ('U', 'V', 'W')
+
+        # this has to go last
         self.setup()
 
     def setup(self):
@@ -57,9 +71,9 @@ class Inpainter(object):
         any remaining nans.
         """
         pp = self.run
-        self.coords = pp.Z[self.sub], pp.X[self.sub], pp.T[self.sub]
-        # TODO: use all data
-        self.data = pp.U[self.sub], pp.V[self.sub], pp.W[self.sub]
+
+        self.coords = [getattr(pp, c)[self.sub] * s for c, s in self.scales]
+        self.data = [getattr(pp, d)[self.sub] for d in self.data_names]
 
         # TODO: determine invalid from full data
         # I think they are all coincident but we could use OR.

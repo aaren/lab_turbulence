@@ -640,6 +640,17 @@ class PreProcessor(H5Cache):
         straight_time = front_function(front_space)
         return front_space, straight_time
 
+    @staticmethod
+    def compute_front_speed(front_space, front_time):
+        """compute the speed of the front (assumed constant)"""
+        front_speed = (np.diff(front_space) / np.diff(front_time)).mean()
+        return front_speed
+
+    @property
+    def front_speed(self):
+        front_space, front_time = self.fit_front()
+        return self.compute_front_speed(front_space, front_time)
+
     def transform_to_front_relative(self, fit='1d'):
         """Transform the data into coordinates relative to the
         position of the gravity current front.
@@ -781,12 +792,15 @@ class PreProcessor(H5Cache):
         self.V[self.V == 0] = np.nan
         self.W[self.W == 0] = np.nan
 
-    def interpolate_nan(self, sub_region):
+    def interpolate_nan(self, sub_region=None, scale='auto'):
         """The raw data contains regions with velocity identical
         to zero. These are non physical and can be removed by
         interpolation.
         """
-        inpainter = Inpainter(self, sub_region=sub_region)
+        if scale == 'auto':
+            scale = self.front_speed
+
+        inpainter = Inpainter(self, sub_region=sub_region, scale=scale)
         inpainter.paint()
 
     def write_data(self, path):
