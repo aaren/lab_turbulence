@@ -91,6 +91,27 @@ def plot_covariance():
     fig.savefig('covariance.png')
 
 
+def plot_3d():
+    data = (r.Tf[:].flatten(), r.Zf[:].flatten(), r.Wf[:].flatten())
+    z_bins = np.linspace(0, 0.1, 50)
+    bins = (t_bins, z_bins, w_bins)
+    H, edges = np.histogramdd(data, bins=bins, normed=True)
+
+    from mayavi import mlab
+
+    mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(H),
+                                     plane_orientation='x_axes',
+                                     slice_index=10,)
+    mlab.pipeline.image_plane_widget(mlab.pipeline.scalar_field(H),
+                                     plane_orientation='y_axes',
+                                     slice_index=10,)
+
+    mlab.outline()
+
+    # crashes! segfault. running ipython --gui=wx --pylab=wx
+    # also crashes when run as python script
+
+
 def test():
     plot_time_histogram()
     plot_covariance()
