@@ -9,6 +9,7 @@ from turbulence import ProcessedRun
 from turbulence import PreProcessor
 from turbulence import Parameters
 from analysis import DMD
+from analysis import Histograms
 
 from commander import cli
 

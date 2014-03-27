@@ -192,12 +192,12 @@ class DMD(AnalysisBase):
 
 class Histograms():
     @staticmethod
-    def plot_time_histogram(ax, data, bins, where=np.s_[:], **kwargs):
+    def plot_histogram(ax, data, bins, where=np.s_[:], **kwargs):
         """Plot a histogram of a quantity through time.
 
         bins - edges of the histogram bins
         where - z index or slice object to use"""
-        H, edges = np.histogramdd(data, bins=bins, normed=True)
+        H, edges = np.histogramdd(data['data'], bins=bins, normed=True)
 
         # hide empty bins
         Hmasked = np.ma.masked_where(H == 0, H)
@@ -206,8 +206,8 @@ class Histograms():
             kwargs['levels'] = np.linspace(0, 10)
 
         ax.contourf(xedges[1:], yedges[1:], Hmasked.T[where], **kwargs)
-        ax.set_xlabel('time after front passage')
-        ax.set_ylabel('vertical velocity')
+        ax.set_xlabel(data['name'][0])
+        ax.set_ylabel(data['name'][1])
         return ax
 
     def vertical_histogram(self, ax, quantity, bins, levels):
