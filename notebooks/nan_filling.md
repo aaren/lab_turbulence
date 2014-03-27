@@ -499,7 +499,7 @@ is much quicker to perform multiple passes.
 
 ### Implementation
 
-[This commit](www.github.com/aaren/lab_turbulence/....)
+[This commit](https://github.com/aaren/lab_turbulence/commit/3b0c316e8bda32939f406a2fcbe4288416b09f80)
 
 Usage:
 
