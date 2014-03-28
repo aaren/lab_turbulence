@@ -7,6 +7,10 @@ import scipy.interpolate as interp
 
 import gc_turbulence as g
 
+import os
+
+os.system("taskset -p 0xffffffff %d" % os.getpid())
+
 
 class Inpainter(object):
     """Fills holes in gridded data (represented by nan) by
@@ -124,7 +128,11 @@ class Inpainter(object):
         interpolated_values = self.compute_values(slice, nans, interpolator)
 
         for i, d in enumerate(self.data):
-            d[slice][nans] = interpolated_values[:, i]
+            labels, n = ndi.label(~np.isnan(interpolated_values[:, i]))
+            good_slices = ndi.find_objects(labels)
+            for gs in good_slices:
+                # FIXME: assign to the real data, not to a copy
+                d[slice][nans][gs] = interpolated_values[:, i][gs]
 
     @property
     def nan_remaining(self):
@@ -163,6 +171,7 @@ class Inpainter(object):
 
         # keep going until there are no more nans
         # TODO: stop if not converge?
+        # when does it not converge?
         if remaining != 0:
             self.setup()
             self.process_parallel()
