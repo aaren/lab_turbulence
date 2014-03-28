@@ -25,6 +25,7 @@ sub = np.s_[:]
 z_bins = np.linspace(0.05, 0.12, 30)
 
 
+# TODO: refactor to single function and use loop
 def plot_many_time_streamwise_histogram():
     bins = (t_bins, u_bins, z_bins)
     data = r.Tf[sub].flatten(), r.Uf[sub].flatten(), r.Zf[sub].flatten()

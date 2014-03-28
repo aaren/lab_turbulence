@@ -41,6 +41,11 @@ More things to do:
 - [ ] compute vertical pdfs with highlighted data exceeding certain
   percentile close together in space / time (i.e. same event)
 
+- [ ] covariance as function of height
+
+- [ ] quiver plots on mean field
+
+- [ ] vorticity
 
 Done:
 
