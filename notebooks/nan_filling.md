@@ -440,41 +440,20 @@ def interpolate_region(slice):
     valid_points = np.vstack(c[slice][shell] for c in coords).T
     valid_values = pp.U[slice][shell]
 
-    # interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
-    interpolator = interp.NearestNDInterpolator(valid_points, valid_values)
+    interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
 
     invalid_points = np.vstack(c[slice][nans] for c in coords).T
     invalid_values = interpolator(invalid_points).astype(valid_values.dtype)
-
-    good = ~np.isnan(invalid_values)
-    # see https://stackoverflow.com/questions/7179532
-    pp.U[slice].flat[np.flatnonzero(nans)[good]] = invalid_values[good]
-
-    return
-    pp.U[slice][nans] = invalid_values
-
 
     ## PROBLEM: the slice might contain points that are outside of
     ## the shell. These points will be over written with nan
     ## regardless of their original state. We need to not overwrite
     ## these points if they have already been filled in by
     ## interpolation from another shell.
+    good = ~np.isnan(invalid_values)
+    # see https://stackoverflow.com/questions/7179532
+    pp.U[slice].flat[np.flatnonzero(nans)[good]] = invalid_values[good]
 
-    # we want a way to the interpolated values to the new array
-    # *only* if they aren't nan
-    # like this:
-    # np.putmask(pp.U[slice][nans], ~np.isnan(invalid_values), invalid_values)
-    # copy interpolated values to U only if they aren't nan
-    # np.copyto(pp.U[slice][nans], invalid_values, where=~np.isnan(invalid_values))
-    # but this doesn't work because the conditional has to come from
-    # the destination array.
-
-    # what we could do is
-    labels, n = ndi.label(~np.isnan(invalid_values))
-    good_slices = ndi.find_objects(labels)
-    for gs in good_slices:
-        pp.U[slice][nans][gs] = invalid_values[gs]
-    # but then we have to worry about assigning to copies
 
 def intall():
     for i, slice in enumerate(slices):
@@ -485,21 +464,14 @@ def intall():
 %time intall()
 ```
 
-This took 15 mins for our test run. We could parallelise it,
-calculating the invalid values in parallel and storing them in
-memory, then assigning to the array when all are calculated.
+The `interpolate_region` method is by far the fastest. This took 15
+mins for our test run. We could parallelise it, calculating the
+invalid values in parallel and storing them in memory, then
+assigning to the array when all are calculated.
 
 This method still hangs on non convex regions, but not for as long.
 There might be a way to reduce the hang by ignoring points that
 dont' contribute much.
-
-The `interpolate_region` method is by far the fastest. It doesn't
-remove all of the nans in a single pass because a single slice can
-have bits of another volume in it. You can add an extra step to the
-method to only calculate the interpolation only for points that are
-explicitly part of the volume that the slice references but this is
-computationally expensive as it has to be done in the inner loop. It
-is much quicker to perform multiple passes.
 
 
 ### Implementation
