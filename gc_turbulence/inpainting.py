@@ -7,6 +7,10 @@ import scipy.interpolate as interp
 
 import gc_turbulence as g
 
+import os
+
+os.system("taskset -p 0xffffffff %d" % os.getpid())
+
 
 class Inpainter(object):
     """Fills holes in gridded data (represented by nan) by
@@ -197,6 +201,20 @@ class Inpainter(object):
         # keep going until there are no more nans, which we should
         # have achieved on the first iteration.
         # TODO: stop if not converge?
+        # when does it not converge?
+        # If we only copy across non nan values we remove a step of
+        # iteration but we still get caught by the literal edge
+        # case that is causing the problem.
+        # the edge case is that the index
+        # (array([0, 0]), array([0, 1]), array([0, 0]))
+        # will not get interpolated out.
+
+        # this makes sense as there are no values on the outside of
+        # the array to use for the interpolation.
+
+        # ideas:
+        # do nearest neighbour on the entire outside of the array
+
         if remaining != 0:
             self.setup()
             self.process_parallel()
@@ -242,6 +260,10 @@ def construct_interpolator((slice, coordinates, values)):
     processing the multiprocessing output.
     """
     return slice, interp.LinearNDInterpolator(coordinates, values)
+
+
+def construct_nearest_interpolator((slice, coordinates, values)):
+    return slice, interp.NearestNDInterpolator(coordinates, values)
 
 
 def test():
