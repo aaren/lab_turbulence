@@ -440,7 +440,8 @@ def interpolate_region(slice):
     valid_points = np.vstack(c[slice][shell] for c in coords).T
     valid_values = pp.U[slice][shell]
 
-    interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
+    # interpolator = interp.LinearNDInterpolator(valid_points, valid_values)
+    interpolator = interp.NearestNDInterpolator(valid_points, valid_values)
 
     invalid_points = np.vstack(c[slice][nans] for c in coords).T
     invalid_values = interpolator(invalid_points).astype(valid_values.dtype)

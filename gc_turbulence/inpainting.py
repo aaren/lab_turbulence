@@ -95,6 +95,10 @@ class Inpainter(object):
         self.slices = ndi.find_objects(volumes)
         # N.B. doesn't isolate volumes - see docstring
 
+        # slices that capture the external faces
+        self.outer_slices = [slice(None, None, s - 1)
+                             for s in self.invalid.shape]
+
     def construct_points(self, slice):
         """Find the valid shell within a given slice and return the
         coordinates and values of the points in the shell.
@@ -148,6 +152,7 @@ class Inpainter(object):
         volumes block the execution of fast ones. It makes a lot of
         sense to multiprocess here.
         """
+        self.process_outer()
         pool = mp.Pool(processes=processors)
         # arguments for interpolator construction
         valid_gen = ((slice,) + self.construct_points(slice)
@@ -172,9 +177,35 @@ class Inpainter(object):
         # keep going until there are no more nans
         # TODO: stop if not converge?
         # when does it not converge?
+        # If we only copy across non nan values we remove a step of
+        # iteration but we still get caught by the literal edge
+        # case that is causing the problem.
+        # the edge case is that the index
+        # (array([0, 0]), array([0, 1]), array([0, 0]))
+        # will not get interpolated out.
+
+        # this makes sense as there are no values on the outside of
+        # the array to use for the interpolation.
+
+        # ideas:
+        # do nearest neighbour on the entire outside of the array
+
         if remaining != 0:
             self.setup()
             self.process_parallel()
+
+    def process_outer(self):
+        valid_gen = ((slice,) + self.construct_points(slice)
+                     for slice in self.outer_slices)
+        # need imap_unordered to avoid blocking. We have to pass any
+        # state needed in post-processing though.
+        interpolators = map(construct_nearest_interpolator, valid_gen)
+
+        for i, output in enumerate(interpolators):
+            slice, interpolator = output
+            print "Interpolating outer # {: >5} / 6\r".format(i),
+            sys.stdout.flush()
+            self.evaluate_and_write(slice, interpolator)
 
     def paint(self, processors=20):
         """Fill in the invalid (nan) regions of the data. """
@@ -191,6 +222,10 @@ def construct_interpolator((slice, coordinates, values)):
     processing the multiprocessing output.
     """
     return slice, interp.LinearNDInterpolator(coordinates, values)
+
+
+def construct_nearest_interpolator((slice, coordinates, values)):
+    return slice, interp.NearestNDInterpolator(coordinates, values)
 
 
 def test():
