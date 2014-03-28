@@ -445,9 +445,13 @@ def interpolate_region(slice):
     invalid_points = np.vstack(c[slice][nans] for c in coords).T
     invalid_values = interpolator(invalid_points).astype(valid_values.dtype)
 
-    pp.U[slice][nans] = invalid_values
+    good = ~np.isnan(invalid_values)
+    # see https://stackoverflow.com/questions/7179532
+    pp.U[slice].flat[np.flatnonzero(nans)[good]] = invalid_values[good]
 
     return
+    pp.U[slice][nans] = invalid_values
+
 
     ## PROBLEM: the slice might contain points that are outside of
     ## the shell. These points will be over written with nan

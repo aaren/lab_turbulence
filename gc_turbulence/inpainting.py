@@ -128,11 +128,11 @@ class Inpainter(object):
         interpolated_values = self.compute_values(slice, nans, interpolator)
 
         for i, d in enumerate(self.data):
-            labels, n = ndi.label(~np.isnan(interpolated_values[:, i]))
-            good_slices = ndi.find_objects(labels)
-            for gs in good_slices:
-                # FIXME: assign to the real data, not to a copy
-                d[slice][nans][gs] = interpolated_values[:, i][gs]
+            # only copy across values that aren't nan
+            values = interpolated_values[:, i]
+            good = ~np.isnan(values)
+            # see https://stackoverflow.com/questions/7179532
+            d[slice].flat[np.flatnonzero(nans)[good]] = values[good]
 
     @property
     def nan_remaining(self):
