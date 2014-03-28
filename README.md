@@ -36,7 +36,7 @@ More things to do:
 - [ ] distinguish between sampling dimension and time / space in
   front relative extraction.
 
-- [ ] interpolate zeros in pre processor - how does pandas do it?
+- [x] interpolate zeros in pre processor - how does pandas do it?
 
 - [ ] wavelet ensembles? can we increase confidence with more
   ensemble members
