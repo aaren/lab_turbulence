@@ -6,27 +6,15 @@ Things to do:
 
 - [ ] Non-dimensionalise
 
-- [x] fit straight line / smooth front detection
-- [ ] check sensitivity of stats to different fittings
-
-- [x] overlay multiple runs to get first impression of similarity
-  (use the single height over time)
-
-- [x] do the front relative transform along the other (space) axis
-  and see what it looks like
+- [ ] vorticity plots. basically port demo/plot.py into the plotter
+  class
 
 - [ ] can we identify qualitatively different regions of the flow?
-- [ ] do they have distinct pdfs?
-- [ ] does cantero have something to say here?
+    - [ ] do they have distinct pdfs?
+    - [ ] does cantero have something to say here?
 
 - [ ] DMD: can we recompose the flow from low order modes? are the
   stats the same?
-
-- [x] look at streamwise velocity
-- [x] subtract front speed to get front relative velocity
-- [x] is there a region of the flow in which the decomp mean front
-  relative velocity is zero? (is this the region of statistical
-  stationarity?)
 
 
 More things to do:
@@ -35,8 +23,6 @@ More things to do:
 
 - [ ] distinguish between sampling dimension and time / space in
   front relative extraction.
-
-- [x] interpolate zeros in pre processor - how does pandas do it?
 
 - [ ] wavelet ensembles? can we increase confidence with more
   ensemble members
@@ -47,9 +33,6 @@ More things to do:
 
 - [ ] distinguish ensembles - inter / intra run, inter parameter
 
-- [ ] vorticity plots. basically port demo/plot.py into the plotter
-  class
-
 - [ ] rapid distortion theory. eddy turnover time large compared
   with advective timescale?
 
@@ -59,3 +42,23 @@ More things to do:
 
 - [ ] compute vertical pdfs with highlighted data exceeding certain
   percentile close together in space / time (i.e. same event)
+
+
+Done:
+
+- [x] interpolate zeros in pre processor - how does pandas do it?
+
+- [x] fit straight line / smooth front detection
+    - [x] check sensitivity of stats to different fittings
+
+- [x] overlay multiple runs to get first impression of similarity
+  (use the single height over time)
+
+- [x] do the front relative transform along the other (space) axis
+  and see what it looks like
+
+- [x] look at streamwise velocity
+- [x] subtract front speed to get front relative velocity
+- [x] is there a region of the flow in which the decomp mean front
+  relative velocity is zero? (is this the region of statistical
+  stationarity?)
