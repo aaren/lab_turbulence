@@ -520,6 +520,8 @@ class PreProcessor(H5Cache):
     # In the calibration coordinate system, the valid region
     # is a rectangle with lower left (-0.06, -0.10) and upper
     # right (0.10, 0.02).
+    # TODO: do lock relative transform first and change these to
+    # lock relative coords
     valid_region_xlim = (-0.075, 0.085)
     valid_region_ylim = (-0.10, 0.02)
 
@@ -557,7 +559,7 @@ class PreProcessor(H5Cache):
         steps = ['extract_valid_region',
                  'filter_zeroes',
                  'interpolate_nan',
-                 'transform_to_lock_relative',
+                 'transform_to_lock_relative',  # TODO: put this first
                  'transform_to_front_relative']
 
         for step in steps:
@@ -862,7 +864,8 @@ class Parameters(object):
     An instance of this class is a function that returns
     a (ordered) dictionary of the run parameters.
     """
-    root = '/home/eeaol/lab/data/flume2/main_data'
+    # TODO: this path should be in init or config or somewhere else
+    root = os.environ['HOME'] + '/lab/data/flume2/main_data/'
     single_layer_parameters = os.path.join(root, 'params_single_layer')
     two_layer_parameters = os.path.join(root, 'params_two_layer')
 
