@@ -4,8 +4,6 @@ work in progress!
 
 Things to do:
 
-- [ ] Non-dimensionalise
-
 - [ ] vorticity plots. basically port demo/plot.py into the plotter
   class
 
@@ -45,6 +43,8 @@ More things to do:
 
 
 Done:
+
+- [x] Non-dimensionalise
 
 - [x] interpolate zeros in pre processor - how does pandas do it?
 
