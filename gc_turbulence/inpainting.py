@@ -192,6 +192,7 @@ class Inpainter(object):
         print "\n"
         remaining = self.nan_remaining
         print "nans remaining: ", remaining
+        sys.stdout.flush()
 
         # keep going until there are no more nans, which we should
         # have achieved on the first iteration.
