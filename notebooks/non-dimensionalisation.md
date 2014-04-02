@@ -46,15 +46,6 @@ H = p['H']
 g_ = 9.81 * (p['rho_lock'] - p['rho_ambient']) / p['rho_ambient']
 U = (g_ * H) ** .5
 T = H / U
-
-# underscore indicates non-dimensional
-X_ = r.Xf / L
-Z_ = r.Zf / H
-T_ = r.Tf / T
-
-U_ = r.Uf / U
-V_ = r.Vf / U
-W_ = r.Wf / U
 ```
 
 Be careful. There are experiments with varying $L$. It may appear
@@ -99,42 +90,66 @@ dz_ = 0.012
 dt_ = 0.015
 ```
 
-The actual resampling is done with map coordinates:
+Resampling a regular grid to another regular grid amounts to scaling
+each of the axes by some factor. Therefore the actual resampling is
+done with `scipy.ndimage.zoom`:
 
 ```python
+zoom_factor = (dz / (H * dz_),
+               dx / (L * dx_),
+               dt / (T * dt_))
 
-# this is where the top and bottom of the valid z region are
-z0 = 0.007 / H
-z1 = 0.12 / H
-z_coords = np.arange(z0, z1, dz_)
+zoom_kwargs = {'zoom':  zoom_factor,
+               'order': 1,          # spline interpolation.
+               'mode': 'constant',  # points outside the boundaries
+               'cval': np.nan,      # are set to np.nan
+               }
 
-# valid x region
-x0 = 3.18 / L
-x1 = 3.32 / L
-x_coords = np.arange(x0, x1, dx_)
+Z_ = ndi.zoom(r.Z[:] / H, **zoom_kwargs)
+```
 
-# time where stuff happens relative to the front
-t0 = -4.99 / T
-t1 = 20 / T
-t_coords = np.arange(t0, t1, dt_)
+It is possible to do this differently using `map_coordinates` by
+defining the regular non dimensional grid that we want to map our
+data to. This approach is inflexible: different runs have different
+scalings and occupy different regions of the non dimensional space
+(which may not overlap). We would have to define the grid extent,
+which means either a single huge grid that contains the entire
+parameter space or a custom grid for each run.
 
-# work out the grid coordinates to index the nondim arrays with
-gz = (z_coords - Z_[:, 0, 0][0]) * (H / dz)
-gx = (x_coords - X_[0, :, 0][0]) * (L / dx)
-gt = (t_coords - T_[0, 0, :][0]) * (T / dt)
-## or, we can just define the grid coordinates. but this relies on
-## us knowing what the limits of the non dim space are??
-## or will this actually capture everything?
+The `zoom` approach conserves all of the run data and determines the
+necessary grid extents automatically, whilst still
+non-dimensionalising the sampling interval.
 
-coords = np.concatenate([c[None] for c in np.meshgrid(gz, gx, gt,
-                                                      indexing='ij')], axis=0)
 
-xs = ndi.map_coordinates(X_, coords, order=1, cval=np.nan)
-zs = ndi.map_coordinates(Z_, coords, order=1, cval=np.nan)
-ts = ndi.map_coordinates(T_, coords, order=1, cval=np.nan)
+### Ensembles
 
-ufs = ndi.map_coordinates(U_, coords, order=3, cval=np.nan)
-vfs = ndi.map_coordinates(V_, coords, order=3, cval=np.nan)
-wfs = ndi.map_coordinates(W_, coords, order=3, cval=np.nan)
+One motivation for non-dimensionalising the data is to allow
+comparison between runs with different parameters.
 
+At this point the data are scaled and resampled on a regular non
+dimensional grid. However, runs with different scaling will cover
+different volumes over this grid. This means no direct stacking of
+runs with different scalings.
+
+Some runs are unstackable because they come from different parts of
+the gravity current lifetime (those with different L). Other runs
+have varying U, H and T but can be considered comparable and
+stackable.
+
+Ensemble stacking of runs just requires that, for a set of runs, we
+extract a (x, z, t) volume from each run that can be found in all of
+the runs.
+
+The only trick here is determining what the shared limits of
+multiple runs are.
+
+example:
+
+```python
+t = r.T_
+tf = r.Tf_
+ii = np.where((32 < t[0, 0, :]) & (t[0, 0, :] < 40))
+iif = np.where((32 < tf[0, 0, :]) & (tf[0, 0, :] < 40))
+
+t[ii] == tf[iif]
 ```
