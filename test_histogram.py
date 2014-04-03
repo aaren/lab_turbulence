@@ -19,111 +19,7 @@ w_bins = np.linspace(-0.05, 0.05, 100)
 v_bins = w_bins
 abs_bins = np.linspace(0, 0.15, 100)
 
-sub = np.s_[10:20, 40:50, :]
-sub = np.s_[:]
-
 z_bins = np.linspace(0.05, 0.12, 30)
-
-
-# TODO: refactor to single function and use loop
-def plot_many_time_streamwise_histogram():
-    bins = (t_bins, u_bins, z_bins)
-    data = r.Tf[sub].flatten(), r.Uf[sub].flatten(), r.Zf[sub].flatten()
-
-    H, edges = np.histogramdd(data, bins=bins, normed=True)
-    xedges, yedges = edges[:2]
-    Hmasked = np.ma.masked_where(H == 0, H)
-
-    # levels = np.logspace(0, 2.5)
-    indices = np.arange(z_bins.size - 1)
-
-    for iz in indices:
-        print iz
-
-        fig, ax = plt.subplots(figsize=(15, 5))
-        ax.contourf(xedges[1:], yedges[1:], Hmasked.T[iz], 100)
-                    # levels=levels, norm=mpl.colors.LogNorm())
-        ax.set_title("z = {}".format(z_bins[iz]))
-        ax.set_xlabel('time after front passage')
-        ax.set_ylabel('front relative streamwise velocity')
-
-        fig.savefig('many_streamwise/{:03d}.png'.format(iz))
-        plt.close(fig)
-
-
-def plot_many_time_vertical_histogram():
-    bins = (t_bins, w_bins, z_bins)
-    data = r.Tf[sub].flatten(), r.Wf[sub].flatten(), r.Zf[sub].flatten()
-
-    H, edges = np.histogramdd(data, bins=bins, normed=True)
-    xedges, yedges = edges[:2]
-    Hmasked = np.ma.masked_where(H == 0, H)
-
-    # levels = np.logspace(0, 2.5)
-    indices = np.arange(z_bins.size - 1)
-
-    for iz in indices:
-        print iz
-
-        fig, ax = plt.subplots(figsize=(15, 5))
-        ax.contourf(xedges[1:], yedges[1:], Hmasked.T[iz], 100)
-                    # levels=levels, norm=mpl.colors.LogNorm())
-        ax.set_title("z = {}".format(z_bins[iz]))
-        ax.set_xlabel('time after front passage')
-        ax.set_ylabel('vertical velocity')
-
-        fig.savefig('many_vertical/{:03d}.png'.format(iz))
-
-
-def plot_many_time_cross_histogram():
-    bins = (t_bins, v_bins, z_bins)
-    data = r.Tf[sub].flatten(), r.Vf[sub].flatten(), r.Zf[sub].flatten()
-
-    H, edges = np.histogramdd(data, bins=bins, normed=True)
-    xedges, yedges = edges[:2]
-    Hmasked = np.ma.masked_where(H == 0, H)
-
-    # levels = np.logspace(0, 2.5)
-    indices = np.arange(z_bins.size - 1)
-
-    for iz in indices:
-        print iz
-
-        fig, ax = plt.subplots(figsize=(15, 5))
-        ax.contourf(xedges[1:], yedges[1:], Hmasked.T[iz], 100)
-                    # levels=levels, norm=mpl.colors.LogNorm())
-        ax.set_title("z = {}".format(z_bins[iz]))
-        ax.set_xlabel('time after front passage')
-        ax.set_ylabel('cross stream velocity')
-
-        fig.savefig('many_cross/{:03d}.png'.format(iz))
-
-
-def plot_many_time_abs_histogram():
-    bins = (t_bins, abs_bins, z_bins)
-
-    speed = np.sqrt(r.Uf[sub] ** 2 + r.Wf[sub] ** 2 + r.Vf[sub] ** 2)
-
-    data = r.Tf[sub].flatten(), speed.flatten(), r.Zf[sub].flatten()
-
-    H, edges = np.histogramdd(data, bins=bins, normed=True)
-    xedges, yedges = edges[:2]
-    Hmasked = np.ma.masked_where(H == 0, H)
-
-    # levels = np.logspace(0, 2.5)
-    indices = np.arange(z_bins.size - 1)
-
-    for iz in indices:
-        print iz
-
-        fig, ax = plt.subplots(figsize=(15, 5))
-        ax.contourf(xedges[1:], yedges[1:], Hmasked.T[iz], 100)
-                    # levels=levels, norm=mpl.colors.LogNorm())
-        ax.set_title("z = {}".format(z_bins[iz]))
-        ax.set_xlabel('time after front passage')
-        ax.set_ylabel('absolute speed')
-
-        fig.savefig('many_abs/{:03d}.png'.format(iz))
 
 
 def plot_time_histogram(iz=30):
@@ -218,13 +114,68 @@ def plot_3d():
     # also crashes when run as python script
 
 
+def plot_vertical_time_histogram(ydata, y_bins, ylabel, outdir,
+                                 sub_region=np.s_[:]):
+    bins = (t_bins, y_bins, z_bins)
+    data = r.Tf[sub_region].flatten(), ydata, r.Zf[sub_region].flatten()
+
+    H, edges = np.histogramdd(data, bins=bins, normed=True)
+    xedges, yedges = edges[:2]
+    Hmasked = np.ma.masked_where(H == 0, H)
+
+    # levels = np.logspace(0, 2.5)
+    indices = np.arange(z_bins.size - 1)
+
+    for iz in indices:
+        print iz, "\r",
+
+        fig, ax = plt.subplots(figsize=(15, 5))
+        ax.contourf(xedges[1:], yedges[1:], Hmasked.T[iz], 100)
+                    # levels=levels, norm=mpl.colors.LogNorm())
+        ax.set_title("z = {}".format(z_bins[iz]))
+        ax.set_xlabel('time after front passage')
+        ax.set_ylabel(ylabel)
+
+        fig.savefig('{}/{:03d}.png'.format(outdir, iz))
+        plt.close(fig)
+
+
+def plot_multi_time_histograms():
+    sub = np.s_[:]
+    abs_speed = np.sqrt(r.Uf[sub] ** 2 + r.Wf[sub] ** 2 + r.Vf[sub] ** 2)
+
+    kwarglist = [dict(outdir='many_streamwise',
+                      ylabel='streamwise velocity',
+                      y_bins=u_bins,
+                      ydata=r.Uf[sub].flatten(),
+                      sub_region=sub),
+
+                 dict(outdir='many_vertical',
+                      ylabel='vertical velocity',
+                      y_bins=w_bins,
+                      ydata=r.Wf[sub].flatten(),
+                      sub_region=sub),
+
+                 dict(outdir='many_cross',
+                      ylabel='cross stream velocity',
+                      y_bins=v_bins,
+                      ydata=r.Vf[sub].flatten(),
+                      sub_region=sub),
+
+                 dict(outdir='many_abs',
+                      ylabel='absolute speed',
+                      bins=abs_bins,
+                      ydata=abs_speed.flatten(),
+                      sub_region=sub),
+                 ]
+    for kwargs in kwarglist:
+        plot_vertical_time_histogram(**kwargs)
+
+
 def test():
     # plot_time_histogram()
     # plot_covariance()
-    # plot_many_time_streamwise_histogram()
-    # plot_many_time_vertical_histogram()
-    # plot_many_time_cross_histogram()
-    plot_many_time_abs_histogram()
+    plot_multi_time_histograms()
 
 
 if __name__ == '__main__':
