@@ -140,6 +140,37 @@ def plot_vertical_time_histogram(ydata, y_bins, ylabel, outdir,
         plt.close(fig)
 
 
+def plot_vertical_covariance_histogram(xdata, ydata,
+                                       x_bins, y_bins,
+                                       xlabel, ylabel,
+                                       outdir, sub_region=np.s_[:]):
+    """Plot the covariance of x and y over multiple heights."""
+    bins = (x_bins, y_bins, z_bins)
+    data = xdata, ydata, r.Zf[sub_region].flatten()
+
+    H, edges = np.histogramdd(data, bins=bins, normed=True)
+    xedges, yedges = edges[:2]
+    Hmasked = np.ma.masked_where(H == 0, H)
+
+    levels = np.logspace(0, 4.5)
+    indices = np.arange(z_bins.size - 1)
+
+    for iz in indices:
+        print iz, "\r",
+
+        fig, ax = plt.subplots(figsize=(15, 5))
+        ax.contourf(xedges[1:], yedges[1:], Hmasked.T[iz],
+                    norm=mpl.colors.LogNorm(), levels=levels)
+        ax.set_title("z = {}".format(z_bins[iz]))
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        g.util.makedirs_p(outdir)
+        fout = '{}/{:03d}.png'.format(outdir, iz)
+        fig.savefig(fout)
+        plt.close(fig)
+
+
 def plot_multi_time_histograms():
     sub = np.s_[:]
     abs_speed = np.sqrt(r.Uf[sub] ** 2 + r.Wf[sub] ** 2 + r.Vf[sub] ** 2)
@@ -172,10 +203,46 @@ def plot_multi_time_histograms():
         plot_vertical_time_histogram(**kwargs)
 
 
+def plot_multi_covariance_histograms():
+    sub = np.s_[:]
+
+    plot_kwargs = [dict(outdir='many_covar_uv',
+                        xlabel='streamwise velocity',
+                        ylabel='cross stream velocity',
+                        x_bins=u_bins,
+                        y_bins=v_bins,
+                        xdata=r.Uf[sub].flatten(),
+                        ydata=r.Vf[sub].flatten(),
+                        sub_region=sub),
+
+                   dict(outdir='many_covar_uw',
+                        xlabel='streamwise velocity',
+                        ylabel='vertical velocity',
+                        x_bins=u_bins,
+                        y_bins=w_bins,
+                        xdata=r.Uf[sub].flatten(),
+                        ydata=r.Wf[sub].flatten(),
+                        sub_region=sub),
+
+                   dict(outdir='many_covar_vw',
+                        xlabel='cross stream velocity',
+                        ylabel='vertical velocity',
+                        x_bins=v_bins,
+                        y_bins=w_bins,
+                        xdata=r.Vf[sub].flatten(),
+                        ydata=r.Wf[sub].flatten(),
+                        sub_region=sub),
+                   ]
+
+    for kwargs in plot_kwargs:
+        plot_vertical_covariance_histogram(**kwargs)
+
+
 def test():
     # plot_time_histogram()
     # plot_covariance()
-    plot_multi_time_histograms()
+    # plot_multi_time_histograms()
+    plot_multi_covariance_histograms()
 
 
 if __name__ == '__main__':
