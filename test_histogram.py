@@ -10,7 +10,7 @@ plt.rc('figure', figsize=(15, 15))
 t_bins = np.linspace(-5, 20, 500)
 levels = np.linspace(0, 20)
 
-test_cache = g.default_processed + '../test/r13_12_17c.hdf5'
+test_cache = g.default_processed + 'r13_12_16a.hdf5'
 
 r = g.ProcessedRun(cache_path=test_cache)
 
