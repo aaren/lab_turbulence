@@ -502,8 +502,6 @@ class PreProcessor(H5Cache):
         - interpolation of zero values (replace with nan?)
         - write to hdf5
 
-    TODO: explain FRONT and LAB frame
-
     N.B. You won't be able to write anything until you
     have run `pp.execute()`.
 
@@ -757,6 +755,16 @@ class PreProcessor(H5Cache):
         """Transform the data into coordinates relative to the
         position of the gravity current front, i.e. from the LAB
         frame to the FRONT frame.
+
+        The LAB frame is the frame of reference in which the data
+        were originally acquired, with velocities relative to the
+        lab rest frame, times relative to the experiment start and
+        space relative to the calibration target.
+
+        The FRONT frame is the frame of reference in which the
+        gravity current front is at rest, with velocities relative
+        to the front, times relative to the time of front passage
+        and space as in the LAB frame.
 
         Implementation takes advantage of regular rectangular data
         and uses map_coordinates.
