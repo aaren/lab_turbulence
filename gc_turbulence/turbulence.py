@@ -502,6 +502,8 @@ class PreProcessor(H5Cache):
         - interpolation of zero values (replace with nan?)
         - write to hdf5
 
+    TODO: explain FRONT and LAB frame
+
     N.B. You won't be able to write anything until you
     have run `pp.execute()`.
 
@@ -668,9 +670,37 @@ class PreProcessor(H5Cache):
         front_space, front_time = self.fit_front()
         return self.compute_front_speed(front_space, front_time)
 
-    def transform_to_front_relative(self, fit='1d'):
-        """Transform the data into coordinates relative to the
-        position of the gravity current front.
+    @property
+    def relative_sample_times(self):
+        """Create the 3d array of front relative sample times, i.e.
+        the time (in seconds) relative to the passage of the gravity
+        current front in the FRONT frame.
+
+        This is just a 1d array in the time axis, repeated over the
+        z and x axes.
+        """
+        # sampling inverval in time (dt)
+        dt = np.diff(self.T[0, 0, :2])
+
+        # start and end times (s) relative to front passage
+        # TODO: move somewhere higher level
+        pre_front = -5
+        post_front = 20
+        relative_sample_times = np.arange(pre_front, post_front, dt)
+
+        # extend over x and z
+        sz, sx, = self.T.shape[:2]
+        relative_sample_times = np.tile(relative_sample_times, (sz, sx, 1))
+
+        return relative_sample_times
+
+    def compute_front_relative_transform_coords(self, fit='1d'):
+        """Calculate the index coordinates needed to transform the
+        data from the LAB frame to the FRONT frame.
+
+        In general these coordinates can be non-integer and
+        negative. The output from this function is suitable for
+        using in map_coordinates.
 
         fit - defaults to '1d', which is to fit a straight line to the
               current and resample the time from that.
@@ -678,8 +708,6 @@ class PreProcessor(H5Cache):
               Using None will turn off any fitting and will
               just use the raw time / space detection.
 
-        Implementation takes advantage of regular rectangular data
-        and uses map_coordinates.
         """
         if not fit:
             front_space, front_time = self.detect_front()
@@ -689,31 +717,23 @@ class PreProcessor(H5Cache):
         self.fx = front_space
         self.ft = front_time
 
+        # compute the times at which we need to sample the original
+        # data to get front relative data by adding the time of
+        # front passage* onto the relative sampling times
+        # *(as a function of x)
+        rtf = front_time[None, ..., None] + self.relative_sample_times
+
+        # now we transform real coordinates to index coordinates.
+        # You might want to skip this step and just compute the
+        # index coordinates straight out. The reason not to do this
+        # is that the coordinates can be negative and non-integer.
+        # map_coordinates is used as a fancy indexer for these
+        # coordinates.
+
         # get the real start time of the data and the
         # sampling distance in time (dt)
         rt = self.T[0, 0, :]
         dt = rt[1] - rt[0]
-
-        ## compute the times at which to sample the *front relative*
-        ## data, if it already existed as a 3d rectangular array (which it
-        ## doesn't!). The other way to do it would be to compute the
-        ## necessary sample indices first and then index the r.t array.
-        ## You shouldn't do it that way because the coords can be negative
-        ## floats and map_coordinates will handle that properly.
-        #
-        # start and end times (s) relative to front passage
-        t0 = -5
-        t1 = 20
-        relative_sample_times = np.arange(t0, t1, dt)
-        # extend over x and z
-        sz, sx, = self.T.shape[:2]
-        relative_sample_times = np.tile(relative_sample_times, (sz, sx, 1))
-
-        ## now compute the times at which we need to sample the
-        ## original data to get front relative data by adding
-        ## the time of front passage* onto the relative sampling times
-        ## *(as a function of x)
-        rtf = front_time[None, ..., None] + relative_sample_times
 
         # grid coordinates of the sampling times
         # (has to be relative to what the time is at
@@ -724,24 +744,41 @@ class PreProcessor(H5Cache):
         # Actually, the x_coords should be created by extending
         # front_space - it works here because front_space is the
         # same as self.X[0, :, 0]
-        zx_coords = np.indices(t_coords.shape)[:2]
+        z_coords, x_coords = np.indices(t_coords.shape)[:2]
 
         # required shape of the coordinates array is
         # (3, rz.size, rx.size, rt.size)
-        coords = np.concatenate((zx_coords, t_coords[None]), axis=0)
+        coords = np.concatenate((z_coords[None],
+                                 x_coords[None],
+                                 t_coords[None]), axis=0)
+        return coords
 
-        st = t_coords.shape[-1]
-        self.Xf = self.X[:, :, 0, None].repeat(st, axis=-1)
-        self.Zf = self.Z[:, :, 0, None].repeat(st, axis=-1)
-        self.Tf = relative_sample_times
+    def transform_to_front_relative(self):
+        """Transform the data into coordinates relative to the
+        position of the gravity current front, i.e. from the LAB
+        frame to the FRONT frame.
 
-        # compute the speed of the front (assumed constant)
-        front_speed = (np.diff(front_space) / np.diff(front_time)).mean()
-        # the front relative velocities are in a frame moving
-        # with the front
-        self.Uf = ndi.map_coordinates(self.U, coords) - front_speed
-        self.Vf = ndi.map_coordinates(self.V, coords)
-        self.Wf = ndi.map_coordinates(self.W, coords)
+        Implementation takes advantage of regular rectangular data
+        and uses map_coordinates.
+        """
+        coords = self.compute_front_relative_transform_coords()
+
+        # use order 0 because 6x as fast here (3s vs 20s) and for x
+        # and z it makes no difference
+        self.Xf = ndi.map_coordinates(self.X, coords, order=0, cval=np.nan)
+        self.Zf = ndi.map_coordinates(self.Z, coords, order=0, cval=np.nan)
+
+        # these are the skewed original times (i.e. LAB frame)
+        self.Tfs = ndi.map_coordinates(self.T, coords, order=3, cval=np.nan)
+        # these are the times relative to front passage (i.e. FRONT frame)
+        self.Tf = self.relative_sample_times
+
+        # the streamwise component is in the FRONT frame
+        fs = self.front_speed
+        self.Uf = ndi.map_coordinates(self.U, coords, cval=np.nan) - fs
+        # cross-stream, vertical components
+        self.Vf = ndi.map_coordinates(self.V, coords, cval=np.nan)
+        self.Wf = ndi.map_coordinates(self.W, coords, cval=np.nan)
 
         # N.B. there is an assumption here that r.t, r.z and r.x are
         # 3d arrays. They are redundant in that they repeat over 2 of
