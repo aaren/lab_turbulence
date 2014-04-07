@@ -3,6 +3,7 @@ import re
 import argparse
 import os
 import glob
+import logging
 
 import h5py
 
@@ -10,6 +11,9 @@ from turbulence import SingleLayerFrame
 from turbulence import SingleLayerRun
 from turbulence import PreProcessor
 from turbulence import Parameters
+
+
+logging.basicConfig(filename='process.log', level=logging.DEBUG)
 
 
 def cli():
@@ -74,7 +78,10 @@ class Commander(object):
             if index in cached and args.new:
                 pass
             else:
-                self.assim(item, args, parameters)
+                try:
+                    self.assim(item, args, parameters)
+                except:
+                    print("Failed to extract {}".format(item))
 
     @staticmethod
     def assim(item, args, parameters):
@@ -182,15 +189,23 @@ class Commander(object):
                 print "{} is not hdf5!".format(item)
 
             else:
-                fname = os.path.basename(item)
-                outpath = os.path.join(args.output, fname)
+                try:
+                    self._pre_process(item, args.output)
+                except Exception:
+                    print("Failed to process {}".format(item))
+                    logging.exception('Could not process {}'.format(item))
 
-                run = SingleLayerRun(cache_path=item)
-                pp = PreProcessor(run=run)
-                print "Pre-processing {} ...".format(item)
-                pp.execute()
-                print "writing data to {} ...".format(outpath)
-                pp.write_data(outpath)
+    @staticmethod
+    def _pre_process(item, outdir):
+        fname = os.path.basename(item)
+        outpath = os.path.join(outdir, fname)
+
+        run = SingleLayerRun(cache_path=item)
+        pp = PreProcessor(run=run)
+        print "Pre-processing {} ...".format(item)
+        pp.execute()
+        print "writing data to {} ...".format(outpath)
+        pp.write_data(outpath)
 
 
 class Renamer(object):
