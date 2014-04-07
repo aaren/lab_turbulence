@@ -86,10 +86,35 @@ class Inpainter(object):
         self.complete_valid_shell = invalid_with_shell & ~self.invalid
 
         # label distinct invalid regions
-        volumes, self.n = ndi.label(invalid_with_shell)
+        self.volumes, n = ndi.label(invalid_with_shell)
         # and find the slice that captures them
-        self.slices = ndi.find_objects(volumes)
+        slices = ndi.find_objects(self.volumes)
         # N.B. doesn't isolate volumes - see docstring
+
+        # big slices cause us problems so split them up into smaller
+        # slices of a maximum width in time index
+        def burst(s, dt=20, overlap=3):
+            """Split a three axis slice into a number of smaller
+            slices with a maximum size on the third axis and an
+            overlap.
+
+            The overlap is there for an edge case in Qhull that
+            occurs when the slice is only 1 element long in an axis.
+
+            This is a problem because then the points are coplanar
+            and Qhull gets confused. This method guarantees that we
+            get an overlap between slices and no slice thinner than
+            the overlap unless it is the only slice.
+            """
+            sz, sx, st = s
+            # define the left and right edges of the bins
+            r = range(st.start, st.stop, dt)[1:] + [st.stop]
+            l = [st.start] + [e - overlap for e in r[:-1]]
+            # edge case comes when the list
+            return [(sz, sx, slice(i, j, None)) for i, j in zip(l, r)]
+
+        self.slices = [s for original in slices for s in burst(original)]
+        self.n = len(self.slices)
 
         # we can run into problems if the corners of the data array
         # are nan to start with, so we set them to their nearest
