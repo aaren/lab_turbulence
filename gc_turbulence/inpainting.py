@@ -201,6 +201,24 @@ class Inpainter(object):
             self.setup()
             self.process_parallel()
 
+    def process_serial(self):
+        """Single core interpolation"""
+        print "\n"
+        self.process_outer()
+        for slice in self.slices:
+            print "\rInterpolation over {}".format(slice),
+            sys.stdout.flush()
+            valid_points, valid_values = self.construct_points(slice)
+            _, interpolator = construct_interpolator((slice,
+                                                      valid_points,
+                                                      valid_values))
+            self.evaluate_and_write(slice, interpolator)
+
+        print "\n"
+        remaining = self.nan_remaining
+        print "nans remaining: ", remaining
+        sys.stdout.flush()
+
     def process_outer(self):
         """Apply nearest neighbour interpolation to the corners of
         the array. You might wonder why we don't just use this
@@ -229,7 +247,10 @@ class Inpainter(object):
 
     def paint(self, processors=20):
         """Fill in the invalid (nan) regions of the data. """
-        self.process_parallel(processors=processors)
+        if processors == 1:
+            self.process_serial()
+        else:
+            self.process_parallel(processors=processors)
 
 
 def construct_interpolator((slice, coordinates, values)):
