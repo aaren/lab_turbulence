@@ -891,6 +891,7 @@ class PreProcessor(H5Cache):
         non-dimensional space (which they will if they have
         different parameters).
         """
+        # FIXME: work with two layer runs
         p = self.run.attributes
 
         # determine the scaling factors
