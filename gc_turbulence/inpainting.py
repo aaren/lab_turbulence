@@ -116,32 +116,12 @@ class Inpainter(object):
         self.slices = [s for original in slices for s in burst(original)]
         self.n = len(self.slices)
 
-        # we can run into problems if the corners of the data array
-        # are nan to start with, so we set them to their nearest
-        # neighbour. We do this using a slice to select a corner
-        # section of the array inside which to search.
-
-        # slices that capture the outermost faces of the data array
-        # on the vertical axis.
-        # self.outer_slices = [slice(None, None, s - 1)
-                             # for s in self.invalid.shape[:1]]
-
-        # hopefully these are big enough to not capture all nans
-        # if not, then we have bigger problems.
-        cz, cx, ct = 2, 2, 5
-
-        # slices that capture the eight corners of the 3d array
-        self.outer_slices = [np.s_[:cz, :cx, :ct],
-                             np.s_[:cz, :cx, -ct:],
-
-                             np.s_[:cz, -cx:, :ct],
-                             np.s_[:cz, -cx, -ct:],
-
-                             np.s_[-cz:, :cx, :ct],
-                             np.s_[-cz:, :cx, -ct:],
-
-                             np.s_[-cz:, -cx:, :ct],
-                             np.s_[-cz:, -cx, -ct:]]
+        # we can run into problems if the exterior of the data array
+        # has nan to start with, so we set them to their nearest
+        # neighbour. We do this using a slice to select the exterior
+        # faces of the array.
+        self.outer_slices = [slice(None, None, s - 1)
+                             for s in self.invalid.shape]
 
     def construct_points(self, slice):
         """Find the valid shell within a given slice and return the
