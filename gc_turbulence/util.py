@@ -1,4 +1,5 @@
 import os
+import sys
 import errno
 import multiprocessing as mp
 from multiprocessing.managers import BaseManager
@@ -19,6 +20,13 @@ def makedirs_p(path):
             raise
 
 
+class FlushWriter(object):
+    """A printer that flushes after write."""
+    def write(self, *args, **kwargs):
+        sys.stdout.write(*args, **kwargs)
+        sys.stdout.flush()
+
+
 class ProgressUpdater(object):
     """Wrapper around the ProgressBar class to use as a shared
     progress bar.
@@ -28,9 +36,10 @@ class ProgressUpdater(object):
     know where they are in the order of execution. Useful for
     multiprocessing.
     """
-    def __init__(self, maxval=None):
+    def __init__(self, maxval=None, writer=FlushWriter()):
         widgets = [Percentage(), ' ', Bar(), ' ', ETA()]
-        self.pbar = ProgressBar(maxval=maxval, widgets=widgets)
+        self.maxval = maxval
+        self.pbar = ProgressBar(maxval=maxval, widgets=widgets, fd=writer)
 
     def start(self):
         self.pbar.start()
