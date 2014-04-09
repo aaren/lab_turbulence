@@ -13,6 +13,11 @@ class Inpainter(object):
     performing linear interpolation using only the set of points
     surrounding each hole.
     """
+    # maximum size of slice in time axis
+    max_slice_size = 20
+    # overlap between sub slices when a big slice is chopped up
+    slice_overlap = 3
+
     def __init__(self, run, sub_region=None, scale=1):
         """run has attributes representing coordinates (X, Z, T)
         and data (U, V, W).
@@ -81,40 +86,25 @@ class Inpainter(object):
         self.invalid = np.isnan(self.data[0])
 
         connections = np.ones((3, 3, 3))  # connect diagonals
-        invalid_with_shell = ndi.binary_dilation(self.invalid,
-                                                 structure=connections)
-        self.complete_valid_shell = invalid_with_shell & ~self.invalid
+        self.invalid_with_shell = ndi.binary_dilation(self.invalid,
+                                                      structure=connections)
+        self.complete_valid_shell = self.invalid_with_shell & ~self.invalid
 
         # label distinct invalid regions
-        self.volumes, n = ndi.label(invalid_with_shell)
+        self.volumes, n = ndi.label(self.invalid_with_shell)
         # and find the slice that captures them
         slices = ndi.find_objects(self.volumes)
         # N.B. doesn't isolate volumes - see docstring
 
+        self.slices = slices
+
         # big slices cause us problems so split them up into smaller
         # slices of a maximum width in time index
-        def burst(s, dt=20, overlap=3):
-            """Split a three axis slice into a number of smaller
-            slices with a maximum size on the third axis and an
-            overlap.
-
-            The overlap is there for an edge case in Qhull that
-            occurs when the slice is only 1 element long in an axis.
-
-            This is a problem because then the points are coplanar
-            and Qhull gets confused. This method guarantees that we
-            get an overlap between slices and no slice thinner than
-            the overlap unless it is the only slice.
-            """
-            sz, sx, st = s
-            # define the left and right edges of the bins
-            r = range(st.start, st.stop, dt)[1:] + [st.stop]
-            l = [st.start] + [e - overlap for e in r[:-1]]
-            # edge case comes when the list
-            return [(sz, sx, slice(i, j, None)) for i, j in zip(l, r)]
-
-        self.slices = [s for original in slices for s in burst(original)]
-        self.n = len(self.slices)
+        # this actually hapens again in self.valid_points_gen, we
+        # just do it here to find out the total length
+        self.burst_slices = [s for original in slices
+                             for s in self.burst(original)]
+        self.n = len(self.burst_slices)
 
         # we can run into problems if the exterior of the data array
         # has nan to start with, so we set them to their nearest
@@ -123,11 +113,17 @@ class Inpainter(object):
         self.outer_slices = [slice(None, None, s - 1)
                              for s in self.invalid.shape]
 
-    def construct_points(self, slice):
+    def construct_points(self, slice, isvolume=True):
         """Find the valid shell within a given slice and return the
         coordinates and values of the points in the shell.
+
+        isvolume lets you define a mask that is used to further
+        select points inside the slice.
         """
-        shell = self.complete_valid_shell[slice]
+        # mask that selects points that are within the slice AND
+        # part of the shell of valid points AND part of the volume
+        # that the slice is built around
+        shell = self.complete_valid_shell[slice] & isvolume
 
         valid_points = np.vstack(c[slice][shell] for c in self.coords).T
         valid_values = np.vstack(d[slice][shell] for d in self.data).T
@@ -167,6 +163,44 @@ class Inpainter(object):
         """How many nans are remaining in the data."""
         return sum(np.isnan(d).sum() for d in self.data)
 
+    def burst(self, s):
+        """Split a three axis slice into a number of smaller
+        slices with a maximum size on the third axis and an
+        overlap.
+
+        The overlap is there for an edge case in Qhull that
+        occurs when the slice is only 1 element long in an axis.
+
+        This is a problem because then the points are coplanar
+        and Qhull gets confused. This method guarantees that we
+        get an overlap between slices and no slice thinner than
+        the overlap unless it is the only slice.
+        """
+        sz, sx, st = s
+        # define the left and right edges of the bins
+        r = range(st.start, st.stop, self.max_slice_size)[1:] + [st.stop]
+        l = [st.start] + [e - self.slice_overlap for e in r[:-1]]
+        # edge case comes when the list
+        return [(sz, sx, slice(i, j, None)) for i, j in zip(l, r)]
+
+    @property
+    def valid_points_gen(self):
+        """Construct valid points in a slice from the volume that
+        created the slice.
+
+        If the slice is large in extent in the time axis, it is
+        burst into smaller slices.
+        """
+        for i, s in enumerate(self.slices):
+            for bs in self.burst(s):
+                # mask that selects the points in the burst slice
+                # that are in the volume that the origin slice was
+                # constructed to surround
+                volume = self.volumes[bs] == i + 1
+                # what if volume is empty (all false)?
+                valid_points, valid_values = self.construct_points(bs, volume)
+                yield (bs, valid_points, valid_values)
+
     def process_parallel(self, processors=20, recursion=0):
         """Fill in the invalid regions of the data, using parallel
         processing to construct the interpolator for each distinct
@@ -183,8 +217,7 @@ class Inpainter(object):
         self.process_outer()
         pool = mp.Pool(processes=processors)
         # arguments for interpolator construction
-        valid_gen = ((slice,) + self.construct_points(slice)
-                     for slice in self.slices)
+        valid_gen = self.valid_points_gen
         # need imap_unordered to avoid blocking. We have to pass any
         # state needed in post-processing though.
         interpolators = pool.imap_unordered(construct_interpolator, valid_gen)
@@ -214,13 +247,12 @@ class Inpainter(object):
         """Single core interpolation"""
         print "\n"
         self.process_outer()
-        for slice in self.slices:
-            print "\rInterpolation over {}".format(slice),
+        valid_points_gen = self.valid_points_gen
+
+        for args in valid_points_gen:
+            print "\rInterpolation over {}".format(args[0]),
             sys.stdout.flush()
-            valid_points, valid_values = self.construct_points(slice)
-            _, interpolator = construct_interpolator((slice,
-                                                      valid_points,
-                                                      valid_values))
+            slice, interpolator = construct_interpolator(args)
             self.evaluate_and_write(slice, interpolator)
 
         print "\n"
