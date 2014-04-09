@@ -182,21 +182,32 @@ class Commander(object):
         parser = argparse.ArgumentParser()
         parser.add_argument('--output', default='processed',
                             help="directory to save the pre-processed data to")
+        parser.add_argument('--single', action='store_true',
+                            help="process single layer only")
         args = parser.parse_args(args)
 
+        renamer = Renamer()
+        params = Parameters()
+
         for item in self.items:
-            if not h5py.is_hdf5(item):
+            index = renamer.pattern_match(item).groupdict()['index']
+            run_type = params.determine_run_type(index)
+            if run_type != 'single layer' and args.single:
+                print "{} is not single layer, skipping.".format(item)
+
+            elif not h5py.is_hdf5(item):
                 print "{} is not hdf5!".format(item)
 
             else:
                 try:
-                    self._pre_process(item, args.output)
+                    self._pre_process(item, args.output, args.single)
+                    logging.info('Processed {}'.format(item))
                 except Exception:
                     print("Failed to process {}".format(item))
                     logging.exception('Could not process {}'.format(item))
 
     @staticmethod
-    def _pre_process(item, outdir):
+    def _pre_process(item, outdir, single=False):
         fname = os.path.basename(item)
         outpath = os.path.join(outdir, fname)
 
