@@ -215,31 +215,62 @@ class Inpainter(object):
         recursion. Setting it to -1 will recurse forever.
         """
         self.process_outer()
-        pool = mp.Pool(processes=processors)
-        # arguments for interpolator construction
-        valid_gen = self.valid_points_gen
-        # need imap_unordered to avoid blocking. We have to pass any
-        # state needed in post-processing though.
-        interpolators = pool.imap_unordered(construct_interpolator, valid_gen)
-        pool.close()
 
-        for i, output in enumerate(interpolators):
-            slice, interpolator = output
-            print "Interpolating region # {: >5} / {}\r".format(i, self.n),
+        def processor(function, inputs, outputs, sentinel='DONE'):
+            """Simple threading processor that reads from the inputs
+            queue and calls function on what it gets. The output
+            from function(input) is written to the outputs queue.
+
+            Stops when it encounters a sentinel on the input queue.
+            """
+            while True:
+                data = inputs.get()
+                if data == sentinel:
+                    break
+                else:
+                    outputs.put(function(data))
+
+        # input and output queues
+        input_stack = mp.Queue()
+        output_stack = mp.Queue()
+
+        pkwargs = {'target': processor,
+                   'args':  (construct_interpolator,
+                             input_stack,
+                             output_stack)}
+
+        processes = [mp.Process(**pkwargs) for _ in range(processors)]
+
+        for p in processes:
+            p.start()
+        print "Processes started and waiting"
+
+        # populate the queue
+        for data in self.valid_points_gen:
+            input_stack.put(data)
+
+        # add sentinels to stop processors
+        for p in processes:
+            input_stack.put('DONE')
+
+        # read off the output stack as interpolators are calculated
+        # and write to the data
+        for i in range(self.n):
+            print "Writing region # {: >5} / {}\r".format(i, self.n),
             sys.stdout.flush()
+            slice, interpolator = output_stack.get()
             self.evaluate_and_write(slice, interpolator)
 
-        pool.join()
+        # wait to finish
+        for p in processes:
+            p.join()
 
-        print "\n"
-        remaining = self.nan_remaining
-        print "nans remaining: ", remaining
+        print "\nnans remaining: ", self.nan_remaining
         sys.stdout.flush()
 
-        # keep going until there are no more nans, which we should
-        # have achieved on the first iteration.
-        # TODO: stop if not converge?
-        if remaining != 0 and recursion:
+        # keep going until no more nans or we reach the recursion
+        # limit
+        if self.nan_remaining != 0 and recursion:
             self.setup()
             self.process_parallel(processors, recursion - 1)
 
