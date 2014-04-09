@@ -522,7 +522,7 @@ class PreProcessor(H5Cache):
     # right (0.10, 0.02).
     # TODO: do lock relative transform first and change these to
     # lock relative coords
-    valid_region_xlim = (-0.075, 0.085)
+    valid_region_xlim = (-0.07, 0.09)
     valid_region_ylim = (-0.10, 0.02)
 
     # the names of the attributes that an instance should have
