@@ -167,7 +167,7 @@ class Inpainter(object):
         """How many nans are remaining in the data."""
         return sum(np.isnan(d).sum() for d in self.data)
 
-    def process_parallel(self, processors=20):
+    def process_parallel(self, processors=20, recursion=0):
         """Fill in the invalid regions of the data, using parallel
         processing to construct the interpolator for each distinct
         invalid region.
@@ -175,6 +175,10 @@ class Inpainter(object):
         The problem with single processing is that slow to calculate
         volumes block the execution of fast ones. It makes a lot of
         sense to multiprocess here.
+
+        recursion (integer) is the number of recursions that are
+        allowed to happen. Setting 0 or False will have no
+        recursion. Setting it to -1 will recurse forever.
         """
         self.process_outer()
         pool = mp.Pool(processes=processors)
@@ -202,9 +206,9 @@ class Inpainter(object):
         # keep going until there are no more nans, which we should
         # have achieved on the first iteration.
         # TODO: stop if not converge?
-        if remaining != 0:
+        if remaining != 0 and recursion:
             self.setup()
-            self.process_parallel()
+            self.process_parallel(processors, recursion - 1)
 
     def process_serial(self):
         """Single core interpolation"""
@@ -250,12 +254,12 @@ class Inpainter(object):
                 # see https://stackoverflow.com/questions/7179532
                 d[slice].flat[np.flatnonzero(nans)[good]] = values[good]
 
-    def paint(self, processors=20):
+    def paint(self, processors=20, recursion=5):
         """Fill in the invalid (nan) regions of the data. """
         if processors == 1:
             self.process_serial()
         else:
-            self.process_parallel(processors=processors)
+            self.process_parallel(processors=processors, recursion=recursion)
 
 
 def construct_interpolator((slice, coordinates, values)):
