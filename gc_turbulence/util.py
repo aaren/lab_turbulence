@@ -4,7 +4,7 @@ import errno
 import multiprocessing as mp
 from multiprocessing.managers import BaseManager
 
-from progressbar import ProgressBar, Percentage, Bar, ETA
+from progressbar import ProgressBar, Percentage, Bar, ETA, SimpleProgress
 
 
 def makedirs_p(path):
@@ -37,7 +37,7 @@ class ProgressUpdater(object):
     multiprocessing.
     """
     def __init__(self, maxval=None, writer=FlushWriter()):
-        widgets = [Percentage(), ' ', Bar(), ' ', ETA()]
+        widgets = [Percentage(), ' ', Bar(), ' ', ETA(), ' ', SimpleProgress()]
         self.maxval = maxval
         self.pbar = ProgressBar(maxval=maxval, widgets=widgets, fd=writer)
 
