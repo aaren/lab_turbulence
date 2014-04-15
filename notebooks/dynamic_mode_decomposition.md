@@ -77,33 +77,89 @@ t = r.Tf_[complement(find_nan_slice(r.Uf_[:]))][example]
 DMD basics
 ----------
 
-Let's recap the basis of the Dynamic Mode Decomposition.
+Let's recap the basis of the Dynamic Mode Decomposition (DMD).
 
-Given a sequence of flow fields, i.e. our data, the DMD gives us a
-series of *dynamic modes* with corresponding complex eigenvalues
-and mode norms representing energy content.
+Our data takes the form of a series of $N$ 2D snapshots of a flow
+field. Each snapshot $\vec{u}_i$ contains a value at each of $M$
+measurement points.
 
-The complex eigenvalues (Ritz values) $\phi_i$ can be transformed
-into frequency space with
+Our data is expressed on a regular grid, but the DMD does not
+require this.
+
+We reshape the data to form an $N\byM$ matrix - the data vector.
+This vector describes the trajectory of our data through an
+$M$-dimensional vector space.
+
+The DMD is a means of fitting the trajectory $\vec{u}(t)$
+
+Just as we can approximate any function $f(x)$ with a series of
+fourier modes that cycle in space, we can fit $\vec{u}(t)$ with a
+superposition of modes that cycle in the $M$-dimensional data space.
+
+The DMD fits the trajectory $D_T$ with a superposition of modes
+expressed through the basis $\vec{v}$:
 
 $$
-\lambda_i = \log \phi_i / \delta
+\vec{u}(t) = \Sum{j}{} \vec{v}_j \mu_i^t
 $$
 
-where $\delta$ is the step size in the decomposition axis.
-$\lambda_i$ is complex and represents the growth / decay and
-frequency of the corresponding mode.
+$$
+\vec{u}(t) = \Sum{j}{} \vec{v}_j \exp{\lambda_i t}
+$$
 
+Performing the DMD gives us a set of complex modes $\phi_i$ and
+corresponding complex frequencies $\lambda_i$. Hence each mode has a
+frequency and decay rate.
+
+The fit above is calculated by assuming that there is a linear
+operator $\mat{A}$ that describes our system, mapping one snapshot
+onto the next
+
+$$
+u_{i + 1} = \mat{A} u_{i}
+$$
+
+The *dynamic modes* $phi_i$ are approximations to the *eigenvectors*
+of the matrix $\mat{A}$, with corresponding *eigenvalues*
+$\lambda_i$. That is, the dynamic modes are invariant under the
+system operator.
+
+The dynamic modes represent spatially coherent structures of
+distinct frequencies in the data.
+
+As $\lambda_i$ are complex, we know the decay rates of each dynamic
+mode, and the *DMD decomposes our data into saturated and transient
+oscillatory modes* [@bagheri2013].
+
+
+### Relation to the fourier transform
+
+The DMD has a strong parallel with the fourier transform (and is
+identical under mean subtraction [@chen-etal2012] sec4.3).
+
+We decompose our data into a series of oscillating modes. In the
+fourier transform we decompose directly into frequency space and
+have complex coefficients that represent the frequency and phase of
+each mode.
+
+In the DMD, we decompose into a complex mode space where each mode
+is associated with a complex frequency.
+
+The fourier transform cannot capture growth rates and therefore
+cannot isolate transient modes.
 
 
 DMD method
 ----------
 
 ```python
-def make_snapshots(data):
+def to_snaps(data):
     """Create the matrix of snapshots by flattening the non decomp
     axes so we have a 2d array where we index the decomp axis like
     snapshots[:,i]
+    
+    i.e. for M data points per snapshot and N snapshots, the
+    snapshot matrix is shape (M, N)
 
     The decomposition axis is the x dimension of the front relative
     data.
@@ -111,6 +167,16 @@ def make_snapshots(data):
     iz, ix, it = data.shape
     snapshots = data.transpose((0, 2, 1)).reshape((-1, ix))
     return snapshots
+
+def to_data(modes, data=u):
+    """Reshape mode shaped data into what we originally put in.
+
+    modes are shape (M, n_modes) where M is the number of
+    measurement points (M = ix * it)
+    """
+    iz, ix, it = data.shape
+    reshaped_modes = np.asarray(modes).reshape((iz, it, -1)).transpose((2, 0, 1))
+    return reshaped_modes
 
 def calculate_dmd(data, n_modes=5):
     """Dynamic mode decomposition, using Uf as the series of vectors."""
@@ -147,10 +213,11 @@ POD of a single run
 ```python
 pmodes, pv = calculate_pod(u, n_modes=10)
 
-fig, axes = plt.subplots(nrows=len(modes))
+fig, axes = plt.subplots(nrows=len(pmodes))
 
 for i, mode in enumerate(pmodes):
     axes[i].contourf(t, z, mode / 0.015, 100)
+    axes[i].set_xticks([])
 
 fig.tight_layout()
 ```
@@ -160,9 +227,174 @@ DMD of a single run
 
 ```python
 modes, ritz_values, norms = calculate_dmd(u, n_modes=10)
+amodes, aritz_values, anorms = calculate_dmd(u, n_modes=u.shape[1]-1)
 
 fig, axes = plt.subplots(nrows=len(modes[0::2]))
 
 for i, mode in enumerate(modes[0::2]):
-    axes[i].contourf(t, z, np.abs(mode), 100)
+    axes[i].contourf(t, z, mode.real, 100)
+    axes[i].set_xticks([])
+```
+
+Reconstruction of a single run
+------------------------------
+
+We can reconstruct data from a POD basis by summing over a subset of
+the basis multiplied by build coefficients $b_i$:
+
+$$
+R = \Sum{i}{} b_i \phi_i
+$$
+
+The build coefficients are calculated by projecting the POD back
+onto the original data and represent the temporal evolution of each
+basis vector. This is necessary as the POD basis does not contain
+temporal information.
+
+Reconstruction with a subset of the POD basis allows us to form a
+low order representation of a dataset. As POD modes are ranked by
+statistical energy we can account for the majority of the variance
+in the data by only using the first few modes.
+
+Where the POD isolates statistically uncorrelated structures, the
+DMD isolates spatially coherent fourier modes.
+
+We can view the DMD as the optimal solution to fitting the data
+$\vec{u}(t)$ with the modes $\vec{\phi_i}$
+
+$$
+\vec{u}(t) = \Sum{j = 0}{r} \vec{\phi_j} \exp{\lambda_j t}
+$$
+
+Once we have computed the modes we can reconstruct the data with a
+set $m$ of modes,
+
+$$
+\vec{u}_k = \vec{u}(\Delta t k) = \Sum{m}{} \vec{\phi_j} \exp{\lambda_j k \Delta t}
+$$
+
+### Mode selection
+
+The problem with DMD reconstruction is that there is no clear way to
+select the subset of modes, $m$. DMD does not rank modes
+statistically because the modes are not statistically orthogonal. In
+general we cannot say which set of modes will let us best
+approximate the data, especially with complex dynamics.
+
+@chen-etal2012 proposed selecting modes with "Optimised DMD", where
+we find the best fit of $m$ modes to $p$ points in data space,
+allowing for a residual at each point. However they only
+demonstrated their method for 3 modes as it requires a numerical
+search over a vast parameter space.
+
+@jovanovic-etal2014 propose "Sparse DMD", where we minimise a cost
+function involving the mode amplitudes and a parameterised proxy for
+the number of modes. A numerical search finds the parameter which
+selects a required number of modes. We then search again to find the
+optimal mode amplitudes.
+
+@semeraro-etal select *consistent* modes iteratively by projecting
+the results of one iteration on the previous one, varying the
+snapshots with an origin time. Modes are retained if their
+projection is greater than a threshold.
+
+-- does this last just amount to a cross validation?
+-- they don't actually technically detail the method.
+
+This procedure necessarily selects modes that have a growth rate
+closer to zero.
+
+
+Ensemble DMD
+------------
+
+```python
+run_indices = ['r13_12_16a',
+               'r13_12_16b',
+               'r13_12_16c',
+               'r13_12_16d',
+               'r13_12_16e',]
+
+caches = [g.default_processed + idx + '.hdf5' for idx in run_indices]
+runs = [g.ProcessedRun(cache_path=c) for c in caches]
+```
+
+We need to find the non nan slice for the whole ensemble. In fact we
+need everything on the same grid, which isn't guaranteed because of
+the interpolation in post processing.
+
+TODO: can we at least ensure a regular grid in post processing?
+we can assume that is the case for now (and it does appear to be if
+you pull the same index from each run), but we still need to find
+the slice that doesn't get nan from any run.
+
+create a function `ensemble_complement`. This can work either by
+calling `complement` on each run or by ORing the isnan arrays.
+
+```python
+def ensemble_complement(runs):
+    allnans = (np.isnan(r.Uf_[:]) for r in runs)
+    allnan = reduce(np.logical_or, nans)
+    bad_slice = ndi.find_objects(allnan)
+    return complement(bad_slice)
+
+good_slice = ensemble_complement(runs)
+```
+
+### Decomposition ensemble
+
+Stack the data along the decomposition (x) axis:
+
+```python
+eu = np.hstack(r.Uf_[good_slice] for r in runs)
+```
+
+and perform the decomposition on this. The number of modes is
+limited by the number of fields in the decomposition axis, i.e. we
+have five times as many possible modes as in the single run case.
+
+As half of the modes are conjugate to the others, this is a *bit*
+like the nyquist limit in the fourier transform. The difference here
+is that we are completely unrestricted in the frequencies that we
+can pull out. The restriction comes in *mode* space rather than
+frequency space.
+
+TODO: do the decomposition and compare to the single layer case
+
+- How does the distribution of $\lambda_i$ change?
+
+It is possible to reconstruct a single run from its DMD modes
+because of the phase information contained in the eigen-frequencies
+$\lambda_i$.
+
+This phase information is destroyed when we perform DMD on an ensemble.
+
+* Can't we reconstruct the ensemble though?
+
+```python
+es = to_snaps(eu)
+emodes, erv, en = mr.compute_DMD_matrices_snaps_method(es, slice(None))
+```
+
+The problem with this method is that extending the decomposition
+axis increases the number of computed modes. We don't have a way of
+selecting which modes are dynamically important.
+
+Therefore, attempt sparse DMD or use some coherency measure from
+comparison with the POD modes (if we can figure out what
+@schmid-etal2011 means by this).
+
+
+### Data ensemble
+
+Stack the snapshot data along the data axis:
+
+```python
+des = np.vstack(to_snaps(r.Uf_[good_slice]) for r in runs)
+demodes, derv, den = mr.compute_DMD_matrices_snaps_method(des, range(10))
+
+# reshape to [ensembles, modes, iz, it]
+iz, ix, it = eu.shape
+rdemodes = [a.reshape(iz, it, -1).transpose((2, 0, 1)) 
+                for a in np.vsplit(demodes.A, len(runs))]
 ```
