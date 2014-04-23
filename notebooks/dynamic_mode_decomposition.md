@@ -40,6 +40,12 @@ Sanity check (plotting non-dimensionalised front relative data):
 example = np.s_[:,30,:]
 u_levels = np.linspace(-0.5, 0.2, 100)
 plt.contourf(r.Tf_[example], r.Zf_[example], r.Uf_[example], levels=u_levels)
+
+t = r.Tf_[example]
+z = r.Zf_[example]
+u = r.Uf_[example]
+v = r.Vf_[example]
+w = r.Wf_[example]
 ```
 
 verify no nans anywhere:
@@ -303,6 +309,31 @@ projection is greater than a threshold.
 
 This procedure necessarily selects modes that have a growth rate
 closer to zero.
+
+#### Sparse DMD
+
+I created a python implementation of sparse DMD based on Jovanovic's
+Matlab source code.
+
+We can apply this to our data:
+
+```python
+import all_dmdsp as sparse_dmd
+
+snapshots = to_snaps(u)
+dmd = sparse_dmd.SparseDMD(snapshots=snapshots)
+
+# control parameter to vary (lets us select sparsity)
+gammaval = np.logspace(0, 5, 100)
+answer = dmd.dmdsp(gammaval)
+
+xdmd = dmd.xdmd
+Edmd = dmd.Edmd
+
+plt.plot(np.log(Edmd.imag), np.abs(xdmd),'ko')
+plt.xlabel('frequency')
+ply.ylabel('amplitude')
+```
 
 
 Ensemble DMD
