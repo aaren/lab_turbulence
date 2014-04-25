@@ -37,6 +37,7 @@ Because some of the analysis is computationally expensive and the
 variables computed are used more than once. It makes sense to save
 them as shared state.
 """
+import functools
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,6 +46,22 @@ import scipy.ndimage as ndi
 from sklearn.neighbors import KernelDensity
 
 import modred as mr
+
+
+def subplot(plot_function):
+    """Wrapper for functions that plot on a matplotlib axes instance
+    that autocreates a figure and axes instance if ax is not
+    supplied.
+    """
+    @functools.wraps(plot_function)
+    def f(self, ax=None, **kwargs):
+        if ax is None:
+            fig, ax = plt.subplots()
+            plot_function(self, ax, **kwargs)
+            return fig
+        else:
+            return plot_function(self, ax, **kwargs)
+    return f
 
 
 class AnalysisBase(object):
@@ -62,6 +79,32 @@ class Basic(AnalysisBase):
         """
         self.run = run
 
+        fr = np.s_[:, 0, :]
+        self.tf = run.Tf[fr]
+        self.zf = run.Zf[fr]
+
+        self.tf_ = run.Tf_[fr]
+        self.zf_ = run.Zf_[fr]
+
+        self.uf = run.Uf
+        self.uf_ = run.Uf_
+
+        self.levels_u = 100
+        self.levels_u_ = np.linspace(-0.5, 0.5, 100)
+        ## derived properties
+        # absolute velocity
+        self.uf_abs = np.hypot(run.Uf, run.Wf)
+        self.uf__abs = np.hypot(run.Uf_, run.Wf_)
+
+    def mean_f(self, x):
+        """Compute mean over time varying axis of a front relative
+        quantity, x.
+        """
+        # TODO: the axis used in nanmean is different for U and Uf
+        # calcs - change Uf dims to make consistent?
+        return np.mean(x, axis=1)
+
+    @subplot
     def mean_velocity(self, ax):
         """Take an axes instance and contour plot the mean speed
         in front relative coordinates.
@@ -73,14 +116,28 @@ class Basic(AnalysisBase):
         ax.set_ylabel('vertical')
         return contourf
 
+    @subplot
+    def mean_velocity_(self, ax):
+        """Take an axes instance and contour plot the mean speed
+        in front relative coordinates.
+        """
+        u_mod_bar = self.mean_f(self.uf__abs)
+        contourf = ax.contourf(u_mod_bar, self.levels_u_)
+        ax.set_title(r'Mean speed $\overline{|u|_t}(x, z)$')
+        ax.set_xlabel('horizontal')
+        ax.set_ylabel('vertical')
+        return contourf
+
+    @subplot
     def mean_velocity_Uf(self, ax):
         mean_Uf = self.mean_f(self.uf)
-        contourf = ax.contourf(mean_Uf, self.levels_u)
+        contourf = ax.contourf(self.tf, self.zf, mean_Uf, self.levels_u)
         ax.set_title('Time averaged streamwise velocity')
         ax.set_xlabel('time after front passage')
         ax.set_ylabel('height')
         return contourf
 
+    @subplot
     def mean_velocity_Wf(self, ax):
         mean_Wf = self.mean_f(self.wf)
         contourf = ax.contourf(mean_Wf, self.levels_w)
@@ -89,6 +146,7 @@ class Basic(AnalysisBase):
         ax.set_ylabel('height')
         return contourf
 
+    @subplot
     def overlay_velocities(self, ax):
         """Given an axes instance, overlay a quiver plot
         of Uf_ and Wf_.
