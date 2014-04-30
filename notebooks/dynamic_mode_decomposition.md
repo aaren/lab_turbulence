@@ -74,7 +74,8 @@ def complement(nan_slices):
     sz, sx, st = nan_slices[0]
     return (slice(None), slice(None), slice(st.stop, None))
 
-u = r.Uf_[complement(find_nan_slice(r.Uf_[:]))]
+uf_ = r.Uf_[complement(find_nan_slice(r.Uf_[:]))]
+uf = r.Uf[complement(find_nan_slice(r.Uf[:]))]
 z = r.Zf_[complement(find_nan_slice(r.Uf_[:]))][example]
 x = r.Xf_[complement(find_nan_slice(r.Uf_[:]))][example]
 t = r.Tf_[complement(find_nan_slice(r.Uf_[:]))][example]
@@ -428,4 +429,59 @@ demodes, derv, den = mr.compute_DMD_matrices_snaps_method(des, range(10))
 iz, ix, it = eu.shape
 rdemodes = [a.reshape(iz, it, -1).transpose((2, 0, 1)) 
                 for a in np.vsplit(demodes.A, len(runs))]
+```
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.ndimage as ndi
+
+import modred as mr
+
+import gc_turbulence as g
+import sparse_dmd
+
+r = g.ProcessedRun(cache_path=g.default_processed + 'r13_12_16a.hdf5')
+
+
+def find_nan_slice(data):
+    """Find the slice that contains nans in the data, assuming that
+    they are contiguous.
+    """
+    return ndi.find_objects(np.isnan(data[...]))
+
+def complement(nan_slices):
+    """Compute the slice that complements a slice that contains
+    nans, i.e. return the slice that will not include any nans.
+    """
+    sz, sx, st = nan_slices[0]
+    return (slice(None), slice(None), slice(st.stop, None))
+
+uf_ = r.Uf_[complement(find_nan_slice(r.Uf_[:]))]
+uf = r.Uf[complement(find_nan_slice(r.Uf[:]))]
+
+suf = sparse_dmd.SparseDMD.to_snaps(uf, decomp_axis=1)
+dmd = sparse_dmd.SparseDMD(suf)
+
+gammaval = np.logspace(0, 5, 200)
+dmd.compute_dmdsp(gammaval)
+
+dmd.compute_sparse_reconstruction(Ni=75, data=uf, decomp_axis=1)
+d = dmd.reconstruction.data
+rd = dmd.reconstruction.rdata
+
+u_levels = np.linspace(-0.1, 0.03)
+
+fig, ax = plt.subplots()
+for i in range(109):
+    ax.contourf(rd[:, i, :], levels=u_levels)
+    plt.draw()
+    fig.savefig('plots/reconstruct_%s.png' % i)
+    fig.clf()
+    print i
+    a2.contourf(d[:, i, :], levels=u_levels)
+    plt.draw()
+    fig.savefig('plots/original_%s.png' % i)
+    print i
+    fig.clf()
 ```
