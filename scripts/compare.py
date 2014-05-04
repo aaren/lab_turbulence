@@ -10,19 +10,29 @@ def plot(index):
     print cache_path,
     r = g.ProcessedRun(cache_path=cache_path)
 
-    # make a plot with the average streamwise velocity
+    # make a plot with the average front relative streamwise velocity
     # compare the dim and non dim
+
+    # TODO: add streamwise (non fr) velocity (vertical mean) through
+    # time (line plot)
+    # Trying to see how wavy runs are.
+    # add this in a wide plot below the other two
 
     u_levels = np.linspace(-0.12, 0.035, 200)
     u_levels_ = u_levels * 7
 
-    fig, axes = plt.subplots(ncols=2)
-    fig.suptitle('{}, front_speed={}'.format(index, r.front_speed[...]))
+    fig = plt.figure(figsize=(12, 5))
+    ax0 = fig.add_subplot(231)
+    ax1 = fig.add_subplot(232)
+    ax1a = fig.add_subplot(233)
+    ax3 = fig.add_subplot(212)
 
-    ax0, ax1 = axes
+    fig.suptitle('{}, front_speed={}'.format(index, r.front_speed[...]), y=1.0)
 
     mean = np.mean(r.Uf[:], axis=1)
     mean_ = np.mean(r.Uf_[:], axis=1)
+
+    mean_sub = r.Uf[:, 10, :] - mean
 
     z = r.Zf[:, 0, :]
     t = r.Tf[:, 0, :]
@@ -32,14 +42,30 @@ def plot(index):
 
     ax0.contourf(t, z, mean, levels=u_levels)
     ax1.contourf(t_, z_, mean_, levels=u_levels_)
+    ax1a.contourf(t, z, mean_sub, levels=u_levels)
 
     ax0.set_xlim(-5, 20)
     ax0.set_ylim(0, 0.125)
+    ax0.set_title('front relative mean')
+
+    ax1a.set_xlim(-5, 20)
+    ax1a.set_ylim(0, 0.125)
+    ax1a.set_title('mean subtracted ix=10')
 
     ax1.set_xlim(-3, 12)
     ax1.set_ylim(0, 0.5)
+    ax1.set_title('non dim front relative mean')
 
+    vertical_mean = np.mean(r.U[:, 10, :], axis=0)
+    time = r.T[0, 10, :]
+
+    ax3.plot(time, vertical_mean, label='vertical mean')
+    ax3.set_title('vertical mean')
+
+    fig.tight_layout()
     fig.savefig('compare/{}.png'.format(index))
+
+    plt.close(fig)
 
 
 def plot_all():
