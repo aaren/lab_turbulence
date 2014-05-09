@@ -400,11 +400,18 @@ new_waves = np.mean(new_mean_sub_u, axis=0, keepdims=True)
 # want to be subtracting this.
 ```
 
+example plots:
+
 ```python
 plt.contourf(new_waves[0], 100)
 plt.contourf(new_waves[0] - waves_xz[0], 100)
 plt.contourf(new_waves[0] - waves_z[0], 100)
 plt.contourf((r.U - new_waves)[0], levels=u_levels)
+ex = np.s_[20, 50, :]
+plt.plot(r.U[ex])
+plt.plot(new_waves[ex])
+plt.plot(waves_x[ex])
+plt.plot(waves_xz[ex])
 ```
 
 
