@@ -536,6 +536,7 @@ class PreProcessor(H5Cache):
                ('Xf', np.float32),  # front relative streamwise coords
                ('Zf', np.float32),  # front relative vertical coords
                ('Tf', np.float32),  # front relative time coords
+               # TODO: add Tfs as a vector
                ('Uf', np.float32),  # front relative streamwise velocity
                ('Vf', np.float32),  # front relative cross stream velocity
                ('Wf', np.float32),  # front relative vertical velocity
