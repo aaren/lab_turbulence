@@ -207,6 +207,20 @@ def transform_to_front_relative(self, fit='1d'):
     # their axes (r.z, r.x, r.t = np.meshgrid(z, x, t, indexing='ij'))
 
 
+# transform from lab relative to front relative
+front_time = r.ft[...]
+front_data = relative_sample_times(dt=0.01, shape=r.T.shape) + front_time[None, ..., None]
+
+t0 = r.T[...].min()
+
+t_coords = (front_data - t0) / dt
+
+z_coords, x_coords = np.indices(t_coords.shape)[:2]
+
+coords = np.concatenate((z_coords[None],
+                         x_coords[None],
+                         t_coords[None]), axis=0)
+
 # transform from front relative to lab relative
 front_time = r.ft[...]
 lab_data = r.T[...] - front_time[None, ..., None]
@@ -221,7 +235,7 @@ fcoords = np.concatenate((zf_coords[None],
                           xf_coords[None],
                           tf_coords[None]), axis=0)
 
-U = transform(r.Uf, fcoords, order=0) - r.front_speed)
+U = transform(r.Uf, fcoords, order=0) - r.front_speed
 
 # compute a mean through the current and transform it to the lab
 # frame
@@ -270,9 +284,128 @@ axes[1].contourf(np.repeat(waves, rwaves.shape[1], axis=1)[0], 100)
 axes[1].set_title('x and z mean')
 ```
 
+The 'noise' coming from the current is any process that is happening
+on a scale that is longer than the time that we observe the current
+for, e.g. a slow overturning eddy. We are making the assumption that
+the mean subtracted structure averages to zero over time. This is
+likely true for small eddies but may fail at larger scales.
+
+For example, the head of the current could shed vortices that
+propagate backwards relative to the head. These will show up in the
+mean subtracted field. Large structures may not be averaged out over
+z and will show up as a propagating feature in (t, x). Averaging
+over x will reduce the signature of this sort of structure.
+
+Another limit in this approach is the assumption of linear
+superposition. When linear waves collide, the result is easily
+obtained as the addition of the waves. This is generally not the
+case with non-linear waves. For example, KdV solitons combine in a
+manner more like particles colliding - they can not be modelled by
+simply adding them together. More exotic solitons might have phase
+changes on colliding, e.g. in the BDO model.
+
+The surface waves here are very linear looking, however the gravity
+current is decidedly non-linear in character. It is not clear at all
+that we can combine the two by addition. That said, assuming linear
+superposition is a good first approximation.
+
+When we subtract the waves from the velocity pattern we get a
+cleaner looking structure:
+
+```python
+ix = 10
+u_levels = np.linspace(-0.03, 0.1, 100)
+fig, axes = plt.subplots(nrows=4)
+axes[0].set_title('before')
+axes[0].contourf(r.T[ix], r.X[ix], r.U[ix], levels=u_levels)
+axes[1].set_title('after, mean(x, z)')
+axes[1].contourf(r.T[ix], r.X[ix], (r.U - waves)[ix], levels=u_levels)
+axes[2].set_title('after, mean(z)')
+axes[2].contourf(r.T[ix], r.X[ix], (r.U - rwaves)[ix], levels=u_levels)
+axes[3].set_title('after, difference')
+axes[3].contourf(r.T[ix], r.X[ix], (waves - rwaves)[0], levels=np.linspace(-0.015, 0.015, 100))
+fig.tight_layout()
+```
+
+The improvement in data clarity is significant regardless of the
+averaging used.
+
 Something to check is whether the wave pattern varies run to run.
 The wave speeds will vary with the reduced gravity on the surface.
 
+How do we decide which mean to take? It isn't clear - they both have
+advantages.
+
+We could use both averaging methods, with multiple transforms
+between frames. Method:
+
+1. Compute mean from Uf and subtract
+
+2. Transform mean subtracted Uf to LAB frame
+
+3. Compute wave field as mean(x, z)
+
+4. Subtract wave field from mean subtracted Uf -> varying-current
+
+5. Transform varying-current back to FRONT frame
+
+6. Subtract from mean subtracted Uf
+
+7. Transform back to LAB frame
+
+8. Compute final wave field as mean(z)
+
+XXX: this doesn't really make sense does it?
+It sort of does - the basic idea is to use the fact that the waves
+are homogeneous in z and nearly homogeneous in x, combined with the
+current being nearly statistically homogeneous in x when we
+transform to the front frame. The implementation below gets it:
+
+```python
+# compute mean from uf
+mean_uf = np.mean(r.Uf[...], axis=1, keepdims=True)
+# expand mean over all x
+full_mean_uf = np.repeat(mean_uf, r.Uf.shape[1], axis=1)
+# transform to lab frame
+trans_mean_uf = transform(full_mean_uf, fcoords, order=0) + fs
+# replace nan with zero
+trans_mean_uf[np.isnan(trans_mean_uf)] = 0
+# subtract mean current from lab frame
+mean_sub_u = r.U[...] - trans_mean_uf
+
+# compute wave field as mean(x, z)
+waves_xz = np.mean(np.mean(mean_sub_u, axis=0, keepdims=True), axis=1, keepdims=True)
+waves_z = np.mean(mean_sub_u, axis=0, keepdims=True)
+
+# subtract wave field from mean subtracted u
+varying_current = mean_sub_u - waves_xz
+
+# transform varying current back to front frame
+trans_varying_current = transform(varying_current, coords, order=0)
+
+# subtract the varying current from the velocity
+# and compute a new mean
+new_mean = np.mean(r.Uf - trans_varying_current, axis=1, keepdims=True)
+full_new_mean = np.repeat(new_mean, r.Uf.shape[1], axis=1)
+trans_new_mean = transform(full_new_mean, fcoords, order=0) + fs
+trans_new_mean[np.isnan(trans_new_mean)] = 0
+
+# subtract transformed mean from u
+new_mean_sub_u = r.U[...] - trans_new_mean - varying_current
+
+# compute new waves
+new_waves = np.mean(new_mean_sub_u, axis=0, keepdims=True)
+
+# hmmmm.... some sort of mean signal left in the waves - we don't
+# want to be subtracting this.
+```
+
+```python
+plt.contourf(new_waves[0], 100)
+plt.contourf(new_waves[0] - waves_xz[0], 100)
+plt.contourf(new_waves[0] - waves_z[0], 100)
+plt.contourf((r.U - new_waves)[0], levels=u_levels)
+```
 
 
 There are two further ways of extracting the wave signal:
