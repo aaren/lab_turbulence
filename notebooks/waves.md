@@ -511,6 +511,7 @@ maps between two sets of points using SVD via the [Kabsch algorithm][kabsch].
 
 [](igl.ethz.ch/projects/ARAP/svd_rot.pdf)
 Challis, J.H. (1995). A procedure for determining rigid body transformation parameters. J. Biomechanics 28, 733-737.
+Umeyama, Shinji 1991, Least Squares Estimation of transformation parameters between two point patterns.
 [](http://nghiaho.com/?page_id=671)
 
 ```python
