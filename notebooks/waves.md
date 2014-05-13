@@ -53,11 +53,8 @@ c = plt.contourf(tf[-5:], zf[-5:], mean_subtracted[-5:, 30, :], 100)
 wave_levels = c.levels
 ```
 
-We can see that these are standing waves when we plot in the non
-current relative coordinate system:
-
-XXX: they could just be long waves?? i.e. long compared to the horizontal
-measurement window.
+Plotting in the lab frame shows that these waves are fast (nearly
+vertical in $(t, x)$):
 
 ```python
 x = r.X[0, :, :]
@@ -79,179 +76,28 @@ velocities.
 We need to modify the front transform routines a bit:
 
 ```python
-r.sample_time_shape = self.T.shape[:2] + [1]
-# get the real start time of the data and the
-# sampling distance in time (dt)
-rt = r.T[0, 0, :]
-t0 = rt[0]
-dt = rt[1] - rt[0]
+r.dt = 0.01
+r.ft = r.ft[...]
+transformer = g.FrontTransformer(r)
 
-def relative_sample_times(dt, shape):
-    """Create the 3d array of front relative sample times, i.e.
-    the time (in seconds) relative to the passage of the gravity
-    current front in the FRONT frame.
+uf = transformer.to_front(r.U, order=0)
 
-    This is just a 1d array in the time axis, repeated over the
-    z and x axes.
-    """
-    # start and end times (s) relative to front passage
-    # TODO: move somewhere higher level
-    pre_front = -5
-    post_front = 20
-    relative_sample_times = np.arange(pre_front, post_front, dt)
-
-    # extend over x and z
-    sz, sx, _ = shape
-    relative_sample_times = np.tile(relative_sample_times, (sz, sx, 1))
-
-    return relative_sample_times
-
-
-def compute_front_relative_transform_coords(relative_sample_times,
-                                            trajectory, dt):
-    """Calculate the index coordinates needed to transform the
-    data from the LAB frame to the FRONT frame.
-
-    In general these coordinates can be non-integer and
-    negative. The output from this function is suitable for
-    using in map_coordinates.
-
-    fit - defaults to '1d', which is to fit a straight line to the
-            current and resample the time from that.
-
-            Using None will turn off any fitting and will
-            just use the raw time / space detection.
-
-    """
-    front_space, front_time = trajectory
-
-    # compute the times at which we need to sample the original
-    # data to get front relative data by adding the time of
-    # front passage* onto the relative sampling times
-    # *(as a function of x)
-    rtf = front_time[None, ..., None] + relative_sample_times
-
-    # now we transform real coordinates to index coordinates.
-    # You might want to skip this step and just compute the
-    # index coordinates straight out. The reason not to do this
-    # is that the coordinates can be negative and non-integer.
-    # map_coordinates is used as a fancy indexer for these
-    # coordinates.
-
-    # grid coordinates of the sampling times
-    # (has to be relative to what the time is at
-    # the start of the data).
-    t_coords = (rtf - t0) / dt
-
-    # z and x coords are the same as before
-    # Actually, the x_coords should be created by extending
-    # front_space - it works here because front_space is the
-    # same as self.X[0, :, 0]
-    z_coords, x_coords = np.indices(t_coords.shape)[:2]
-
-    # required shape of the coordinates array is
-    # (3, rz.size, rx.size, rt.size)
-    coords = np.concatenate((z_coords[None],
-                             x_coords[None],
-                             t_coords[None]), axis=0)
-    return coords
-
-def transform(vector, coords, order=3):
-    return ndi.map_coordinates(vector, coords, cval=np.nan, order=order)
-
-def transform_to_front_relative(self, fit='1d'):
-    """Transform the data into coordinates relative to the
-    position of the gravity current front, i.e. from the LAB
-    frame to the FRONT frame.
-
-    The LAB frame is the frame of reference in which the data
-    were originally acquired, with velocities relative to the
-    lab rest frame, times relative to the experiment start and
-    space relative to the calibration target.
-
-    The FRONT frame is the frame of reference in which the
-    gravity current front is at rest, with velocities relative
-    to the front, times relative to the time of front passage
-    and space as in the LAB frame.
-
-    Implementation takes advantage of regular rectangular data
-    and uses map_coordinates.
-    """
-    trajectory = self.fit_front()
-    dt = self.dt
-    rsample_times = relative_sample_times(dt, self.sample_time_shape)
-
-    coords = self.compute_front_relative_transform_coords(rsample_times,
-                                                          trajectory,
-                                                          dt)
-
-    # use order 0 because 6x as fast here (3s vs 20s) and for x
-    # and z it makes no difference
-    self.Xf = transform(self.X, coords, order=0)
-    self.Zf = transform(self.Z, coords, order=0)
-
-    # these are the skewed original times (i.e. LAB frame)
-    self.Tfs = transform(self.T, coords, order=3)
-    # these are the times relative to front passage (i.e. FRONT frame)
-    self.Tf = rsample_times
-
-    # the streamwise component is in the FRONT frame
-    fs = self.front_speed
-    self.Uf = transform(self.U) - fs
-    # cross-stream, vertical components
-    self.Vf = transform(self.V, coords)
-    self.Wf = transform(self.W, coords)
-
-    # N.B. there is an assumption here that r.t, r.z and r.x are
-    # 3d arrays. They are redundant in that they repeat over 2 of
-    # their axes (r.z, r.x, r.t = np.meshgrid(z, x, t, indexing='ij'))
-
-
-# transform from lab relative to front relative
-front_time = r.ft[...]
-front_data = relative_sample_times(dt=0.01, shape=r.T.shape) + front_time[None, ..., None]
-
-t0 = r.T[...].min()
-
-t_coords = (front_data - t0) / dt
-
-z_coords, x_coords = np.indices(t_coords.shape)[:2]
-
-coords = np.concatenate((z_coords[None],
-                         x_coords[None],
-                         t_coords[None]), axis=0)
-
-# transform from front relative to lab relative
-front_time = r.ft[...]
-lab_data = r.T[...] - front_time[None, ..., None]
-
-tf0 = r.Tf[...].min()
-
-tf_coords = (lab_data - tf0) / dt
-
-zf_coords, xf_coords = np.indices(t_coords.shape)[:2]
-
-fcoords = np.concatenate((zf_coords[None],
-                          xf_coords[None],
-                          tf_coords[None]), axis=0)
-
-U = transform(r.Uf, fcoords, order=0) - r.front_speed
-
-# compute a mean through the current and transform it to the lab
-# frame
-mean_u = np.mean(r.Uf, axis=1, keepdims=True)
-full_mean_u = np.repeat(mean_u, r.Uf.shape[1], axis=1)
-trans_full_mean_u = transform(full_mean_u, fcoords, order=0) + fs
-
-# now we can have mean subtracted data in the lab frame
-mean_sub_u = r.U[...] - trans_full_mean_u[...]
+# compute mean from uf
+mean_uf = np.mean(uf, axis=1, keepdims=True)
+# expand mean over all x
+full_mean_uf = np.repeat(mean_uf, uf.shape[1], axis=1)
+# transform to lab frame
+trans_mean_uf = transformer.to_lab(full_mean_uf, order=0)
+# subtract mean current from lab frame
+mean_sub_u = r.U[...] - trans_mean_uf
 
 # from which we might be able to get the wave signal,
 # using the fact that it is homogeneous in x and z in the lab frame
-waves = np.mean(np.mean(mean_sub_u, axis=0, keepdims=True), axis=0, keepdims=True)
+waves_xz = np.mean(np.mean(mean_sub_u, axis=0, keepdims=True), axis=1, keepdims=True)
+```
 
-u_no_waves = r.U - waves
-#BOOM!
+```python
+plt.contourf(waves_xz, 100)
 ```
 
 Looking at this signal, it seems that the waves might be fast rather
@@ -276,12 +122,15 @@ coming from the current.
 Comparison:
 
 ```python
-rwaves = np.mean(mean_sub_u, axis=0, keepdims=True)
+waves_z = np.mean(mean_sub_u, axis=0, keepdims=True)
+full_waves_xz = np.repeat(waves_xz, waves_z.shape[1], axis=1)
+
 fig, axes = plt.subplots(nrows=2)
-axes[0].contourf(rwaves[0], 100)
+axes[0].contourf(waves_z[0], 100)
 axes[0].set_title('only z mean')
-axes[1].contourf(np.repeat(waves, rwaves.shape[1], axis=1)[0], 100)
+axes[1].contourf(full_waves_xz[0], 100)
 axes[1].set_title('x and z mean')
+fig.tight_layout()
 ```
 
 The 'noise' coming from the current is any process that is happening
@@ -315,15 +164,15 @@ cleaner looking structure:
 ```python
 ix = 10
 u_levels = np.linspace(-0.03, 0.1, 100)
-fig, axes = plt.subplots(nrows=4)
+fig, axes = plt.subplots(nrows=4, figsize=(12, 12))
 axes[0].set_title('before')
 axes[0].contourf(r.T[ix], r.X[ix], r.U[ix], levels=u_levels)
 axes[1].set_title('after, mean(x, z)')
-axes[1].contourf(r.T[ix], r.X[ix], (r.U - waves)[ix], levels=u_levels)
+axes[1].contourf(r.T[ix], r.X[ix], (r.U - waves_xz)[ix], levels=u_levels)
 axes[2].set_title('after, mean(z)')
-axes[2].contourf(r.T[ix], r.X[ix], (r.U - rwaves)[ix], levels=u_levels)
+axes[2].contourf(r.T[ix], r.X[ix], (r.U - waves_z)[ix], levels=u_levels)
 axes[3].set_title('after, difference')
-axes[3].contourf(r.T[ix], r.X[ix], (waves - rwaves)[0], levels=np.linspace(-0.015, 0.015, 100))
+axes[3].contourf(r.T[ix], r.X[ix], (waves - waves_z)[0], levels=np.linspace(-0.015, 0.015, 100))
 fig.tight_layout()
 ```
 
@@ -362,14 +211,14 @@ current being nearly statistically homogeneous in x when we
 transform to the front frame. The implementation below gets it:
 
 ```python
+uf = transformer.to_front(r.U, order=0)
+
 # compute mean from uf
-mean_uf = np.mean(r.Uf[...], axis=1, keepdims=True)
+mean_uf = np.mean(uf, axis=1, keepdims=True)
 # expand mean over all x
-full_mean_uf = np.repeat(mean_uf, r.Uf.shape[1], axis=1)
+full_mean_uf = np.repeat(mean_uf, uf.shape[1], axis=1)
 # transform to lab frame
-trans_mean_uf = transform(full_mean_uf, fcoords, order=0) + fs
-# replace nan with zero
-trans_mean_uf[np.isnan(trans_mean_uf)] = 0
+trans_mean_uf = transformer.to_lab(full_mean_uf, order=0)
 # subtract mean current from lab frame
 mean_sub_u = r.U[...] - trans_mean_uf
 
@@ -377,17 +226,18 @@ mean_sub_u = r.U[...] - trans_mean_uf
 waves_xz = np.mean(np.mean(mean_sub_u, axis=0, keepdims=True), axis=1, keepdims=True)
 waves_z = np.mean(mean_sub_u, axis=0, keepdims=True)
 
-# subtract wave field from mean subtracted u
+# subtract wave field from mean subtracted u to find the current
+# signal that is not captured by the mean that varies in x
 varying_current = mean_sub_u - waves_xz
 
 # transform varying current back to front frame
-trans_varying_current = transform(varying_current, coords, order=0)
+trans_varying_current = transformer.to_front(varying_current, order=0)
 
 # subtract the varying current from the velocity
 # and compute a new mean
-new_mean = np.mean(r.Uf - trans_varying_current, axis=1, keepdims=True)
-full_new_mean = np.repeat(new_mean, r.Uf.shape[1], axis=1)
-trans_new_mean = transform(full_new_mean, fcoords, order=0) + fs
+new_mean = np.mean(uf - trans_varying_current, axis=1, keepdims=True)
+full_new_mean = np.repeat(new_mean, uf.shape[1], axis=1)
+trans_new_mean = transformer.to_lab(full_new_mean, order=0)
 trans_new_mean[np.isnan(trans_new_mean)] = 0
 
 # subtract transformed mean from u
@@ -403,17 +253,20 @@ new_waves = np.mean(new_mean_sub_u, axis=0, keepdims=True)
 example plots:
 
 ```python
-plt.contourf(new_waves[0], 100)
-plt.contourf(new_waves[0] - waves_xz[0], 100)
-plt.contourf(new_waves[0] - waves_z[0], 100)
-plt.contourf((r.U - new_waves)[0], levels=u_levels)
+fig, axes = plt.subplots(nrows=7, figsize=(10, 20))
+axes[0].contourf(new_waves[0], 100)
+axes[1].contourf(new_waves[0] - waves_xz[0], 100)
+axes[2].contourf(new_waves[0] - waves_z[0], 100)
+axes[3].contourf((r.U - new_waves)[0], levels=u_levels)
 ex = np.s_[20, 50, :]
-plt.plot(r.U[ex])
-plt.plot(new_waves[ex])
-plt.plot(waves_x[ex])
-plt.plot(waves_xz[ex])
+axes[4].plot(r.U[ex])
+axes[5].plot(new_waves[0, 50])
+axes[5].plot(waves_z[0, 50])
+axes[5].plot(waves_xz[0, 0])
+axes[6].plot(r.U[ex] - new_waves[0, 50])
 ```
 
+### Other methods
 
 There are two further ways of extracting the wave signal:
 
