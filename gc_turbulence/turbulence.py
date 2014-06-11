@@ -1027,6 +1027,76 @@ class FrontTransformer(object):
         return self.compute_grid_coordinates(front_times, self.Tmin, self.dt)
 
 
+class WaveGobbler(object):
+    """Isolate surface wave signal in velocity data."""
+    def __init__(self, run):
+        run.dt = 0.01
+        run.ft = run.ft[...]
+        self.transformer = FrontTransformer(run)
+
+    def get_waves(self, velocity, order=0):
+        trans = self.transformer
+        uf = trans.to_front(velocity, order=order)
+
+        # compute mean from uf
+        mean_uf = np.mean(uf, axis=1, keepdims=True)
+        # expand mean over all x
+        full_mean_uf = np.repeat(mean_uf, uf.shape[1], axis=1)
+        # transform to lab frame
+        trans_mean_uf = trans.to_lab(full_mean_uf, order=0)
+        # subtract mean current from lab frame
+        mean_sub_u = velocity - trans_mean_uf
+
+        # waves_xz = np.mean(np.mean(mean_sub_u, axis=0, keepdims=True),
+        #                    axis=1, keepdims=True)
+        waves_z = np.mean(mean_sub_u, axis=0, keepdims=True)
+        return waves_z
+
+    def get_clever_waves(self, velocity, order=0):
+        trans = self.transformer
+        uf = trans.to_front(velocity, order=order)
+
+        # compute mean from uf
+        # TODO: set as property
+        mean_uf = np.mean(uf, axis=1, keepdims=True)
+        # expand mean over all x
+        full_mean_uf = np.repeat(mean_uf, uf.shape[1], axis=1)
+        # transform to lab frame
+        trans_mean_uf = trans.to_lab(full_mean_uf, order=order)
+        # subtract mean current from lab frame
+        mean_sub_u = velocity - trans_mean_uf
+
+        # compute wave field as mean(x, z)
+        waves_xz = np.mean(np.mean(mean_sub_u, axis=0, keepdims=True),
+                           axis=1, keepdims=True)
+        # waves_z = np.mean(mean_sub_u, axis=0, keepdims=True)
+
+        # subtract wave field from mean subtracted u to find the current
+        # signal that is not captured by the mean that varies in x
+        varying_current = mean_sub_u - waves_xz
+
+        # transform varying current back to front frame
+        trans_varying_current = trans.to_front(varying_current, order=order)
+
+        # subtract the varying current from the velocity
+        # and compute a new mean
+        new_mean = np.mean(uf - trans_varying_current, axis=1, keepdims=True)
+        full_new_mean = np.repeat(new_mean, uf.shape[1], axis=1)
+        trans_new_mean = trans.to_lab(full_new_mean, order=order)
+
+        # subtract transformed mean from u
+        new_mean_sub_u = velocity - trans_new_mean - varying_current
+
+        # compute new waves
+        new_waves = np.mean(new_mean_sub_u, axis=0, keepdims=True)
+
+        return new_waves
+
+    def gobble(self, velocity, order=0):
+        waves = self.get_waves(velocity, order)
+        return velocity - waves
+
+
 class ProcessedRun(H5Cache):
     """Wrapper around a run that has had its data quality controlled."""
     def __init__(self, cache_path=None, forced_load=False):
