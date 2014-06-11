@@ -702,20 +702,20 @@ class PreProcessor(H5Cache):
 
         # use order 0 because 6x as fast here (3s vs 20s) and for x
         # and z it makes no difference
-        self.Xf = transform.to_front(self.X, order=0)
-        self.Zf = transform.to_front(self.Z, order=0)
+        self.Xf = transform.to_reduced_front(self.X, order=0)
+        self.Zf = transform.to_reduced_front(self.Z, order=0)
 
         # these are the skewed original times (i.e. LAB frame)
-        self.Tfs = transform.to_front(self.T)
+        self.Tfs = transform.to_reduced_front(self.T)
         # these are the times relative to front passage (i.e. FRONT frame)
-        self.Tf = self.relative_sample_times
+        self.Tf = transform.front_relative_sample_times
         # equally, self.Tf = transform.to_front(self.T) - front_time
 
         # the streamwise component is in the FRONT frame
-        self.Uf = transform.to_front(self.U) - self.front_speed
+        self.Uf = transform.to_reduced_front(self.U) - self.front_speed
         # cross-stream, vertical components
-        self.Vf = transform.to_front(self.V)
-        self.Wf = transform.to_front(self.W)
+        self.Vf = transform.to_reduced_front(self.V)
+        self.Wf = transform.to_reduced_front(self.W)
 
         # N.B. there is an assumption here that r.t, r.z and r.x are
         # 3d arrays. They are redundant in that they repeat over 2 of
