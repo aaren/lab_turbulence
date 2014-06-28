@@ -483,31 +483,12 @@ class SingleLayerRun(H5Cache):
         return timestamps
 
 
-class PreProcessor(H5Cache):
-    """Apply basic pre processing to raw Dynamic Studio output to make
-    it usable in analysis.
+class VectorAttributes(object):
+    """Class attributes that define vector names / types and
+    measurements used in data processing.
 
-    Usage:
-
-        r = SingleLayerRun
-        pp = PreProcessor(r)
-        pp.execute()
-        pp.write_data(hdf5_cache_path)
-
-    Stages:
-
-        - transform X, Z to lock / base relative.
-        - extract valid region
-        - transform to front relative coordinates
-        - interpolation of zero values (replace with nan?)
-        - write to hdf5
-
-    N.B. You won't be able to write anything until you
-    have run `pp.execute()`.
-
-    There are more methods on this class (for each of the
-    steps in execute) but if they are run out of order you
-    will probably get weird results.
+    Intended to be inherited by all classes that require access to
+    these attributes.
     """
     # The origin of the coordinate system (centre of the
     # calibration target) is 105mm from the base of the tank
@@ -563,6 +544,33 @@ class PreProcessor(H5Cache):
                ]
     vectors = np.dtype(vectors)
 
+
+class PreProcessor(VectorAttributes, H5Cache):
+    """Apply basic pre processing to raw Dynamic Studio output to make
+    it usable in analysis.
+
+    Usage:
+
+        r = SingleLayerRun
+        pp = PreProcessor(r)
+        pp.execute()
+        pp.write_data(hdf5_cache_path)
+
+    Stages:
+
+        - transform X, Z to lock / base relative.
+        - extract valid region
+        - transform to front relative coordinates
+        - interpolation of zero values (replace with nan?)
+        - write to hdf5
+
+    N.B. You won't be able to write anything until you
+    have run `pp.execute()`.
+
+    There are more methods on this class (for each of the
+    steps in execute) but if they are run out of order you
+    will probably get weird results.
+    """
     def __init__(self, run):
         self.run = run
         self.run.load()
@@ -1096,8 +1104,22 @@ class WaveGobbler(object):
         waves = self.get_waves(velocity, order)
         return velocity - waves
 
+    def process(self, velocity):
+        """Determine waves and wave subtracted data for
+        each of u, v, w.
+        """
+        # WIP
+        data = getattr(self.run, velocity)
+        waves = self.get_clever_waves(data)
+        data_ = data - waves
 
-class ProcessedRun(H5Cache):
+    def process_all(self):
+        for v in ('U', 'V', 'W'):
+            self.process(v)
+
+
+
+class ProcessedRun(VectorAttributes, H5Cache):
     """Wrapper around a run that has had its data quality controlled."""
     def __init__(self, cache_path=None, forced_load=False):
         """Initialise a processed run.
@@ -1105,8 +1127,6 @@ class ProcessedRun(H5Cache):
         cache_path - hdf5 to load from
         forced_load - load hdf5 even its keys aren't the same as vectors
         """
-        # specify vectors as those produced by the pre processor
-        self.vectors = np.dtype(PreProcessor.vectors)
         self.cache_path = cache_path
         if self.cache_path:
             self.init_cache(self.cache_path)
