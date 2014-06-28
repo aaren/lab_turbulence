@@ -708,22 +708,35 @@ class PreProcessor(VectorAttributes, H5Cache):
 
         transform = FrontTransformer(self, pre_front=-5, post_front=20)
 
-        # use order 0 because 6x as fast here (3s vs 20s) and for x
-        # and z it makes no difference
-        self.Xf = transform.to_reduced_front(self.X, order=0)
-        self.Zf = transform.to_reduced_front(self.Z, order=0)
+        # use order 0 (nearest neighbour) because 6x as fast here
+        # (3s vs 20s) and for x and z it makes no difference
+        space_order = 0
+
+        # using (spline interpoplation) order greater than 1 leads
+        # to nans poisoning the data from the edges (we have already
+        # removed all nans from the interior of the data in a
+        # previous step). Explicitly dealing with the boundaries is
+        # the proper way to get around this, but is overkill here.
+
+        # Use order 1 (linear interpolation) for time and speed
+        time_order = 1
+        speed_order = 1
+
+        self.Xf = transform.to_reduced_front(self.X, order=space_order)
+        self.Zf = transform.to_reduced_front(self.Z, order=space_order)
 
         # these are the skewed original times (i.e. LAB frame)
-        self.Tfs = transform.to_reduced_front(self.T)
+        self.Tfs = transform.to_reduced_front(self.T, order=time_order)
         # these are the times relative to front passage (i.e. FRONT frame)
         self.Tf = transform.front_relative_sample_times
         # equally, self.Tf = transform.to_front(self.T) - front_time
 
         # the streamwise component is in the FRONT frame
-        self.Uf = transform.to_reduced_front(self.U) - self.front_speed
+        self.Uf = transform.to_reduced_front(self.U, order=speed_order) \
+                    - self.front_speed
         # cross-stream, vertical components
-        self.Vf = transform.to_reduced_front(self.V)
-        self.Wf = transform.to_reduced_front(self.W)
+        self.Vf = transform.to_reduced_front(self.V, order=speed_order)
+        self.Wf = transform.to_reduced_front(self.W, order=speed_order)
 
         # N.B. there is an assumption here that r.t, r.z and r.x are
         # 3d arrays. They are redundant in that they repeat over 2 of
@@ -955,7 +968,14 @@ class FrontTransformer(object):
         return np.tile(relative_sample_times, (sz, sx, 1))
 
     @staticmethod
-    def transform(vector, coords, order=3, cval=np.nan):
+    def transform(vector, coords, order=1, cval=np.nan):
+        """vector - array of data to sample from
+        coords - grid coordinates to sample at
+        order - spline interpolation order. Values greater than 1
+                will cause problems with data containing nans.
+        cval - value to pad output array with outside of box formed
+               by coords
+        """
         return ndi.map_coordinates(vector, coords, cval=cval, order=order)
 
     def to_reduced_front(self, array, **kwargs):
