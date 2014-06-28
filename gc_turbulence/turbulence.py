@@ -1035,9 +1035,27 @@ class FrontTransformer(object):
         return self.compute_grid_coordinates(front_times, self.Tmin, self.dt)
 
 
-class WaveGobbler(object):
+class WaveGobbler(PreProcessor):
     """Isolate surface wave signal in velocity data."""
+    # new attributes that reference wave data
+    wave_vectors = [('U_waves', np.float32),
+                    ('V_waves', np.float32),
+                    ('W_waves', np.float32),
+                    ]
+    init_vectors = PreProcessor.vectors.descr
+    vectors = np.dtype(init_vectors + wave_vectors)
+
     def __init__(self, run):
+        self.run = run
+
+        self.U = self.run.U[...]
+        self.V = self.run.V[...]
+        self.W = self.run.W[...]
+
+        self.X = self.run.X[...]
+        self.Z = self.run.Z[...]
+        self.T = self.run.T[...]
+
         run.dt = 0.01
         run.ft = run.ft[...]
         self.transformer = FrontTransformer(run)
@@ -1105,18 +1123,42 @@ class WaveGobbler(object):
         return velocity - waves
 
     def process(self, velocity):
-        """Determine waves and wave subtracted data for
-        each of u, v, w.
+        """velocity - string that specifies attribute to treat as velocity
+                      (e.g. 'U')
+
+        Take the velocity data and extract the waves.
+
+        Subtract the waves from the velocity and replace the
+        velocity data with this.
+
         """
-        # WIP
         data = getattr(self.run, velocity)
         waves = self.get_clever_waves(data)
         data_ = data - waves
+        setattr(self, velocity, data_)
+        setattr(self, velocity + '_waves', waves)
+
+    def complete_processing(self):
+        """Do the remaining preprocessing steps."""
+        self.transform_to_front_relative()
+        self.non_dimensionalise()
+        self.has_executed = True
+
+        # create new path as original with 'waveless' dir
+        dirname = os.path.dirname(self.run.cache_path)
+        fname = os.path.basename(self.run.cache_path)
+        waveless_path = os.path.join(dirname, 'waveless', fname)
+
+        print "writing data to ", waveless_path
+        self.write_data(waveless_path)
 
     def process_all(self):
         for v in ('U', 'V', 'W'):
+            print 'processing waves...', v
             self.process(v)
 
+        print "completing processing..."
+        self.complete_processing()
 
 
 class ProcessedRun(VectorAttributes, H5Cache):
@@ -1131,6 +1173,16 @@ class ProcessedRun(VectorAttributes, H5Cache):
         if self.cache_path:
             self.init_cache(self.cache_path)
             self.load(force=forced_load)
+
+
+class WavelessRun(H5Cache):
+    """Stub for a waveless run. Don't inherit from VectorAttributes
+    as we just load all of the vectors in the hdf5. This isn't safe
+    in that we could end up loading things that aren't valid but it
+    should be temporary."""
+    def __init__(self, cache_path):
+        self.init_cache(cache_path)
+        self.load()
 
 
 class Parameters(object):
