@@ -16,6 +16,8 @@ from util import parallel_stub
 
 from inpainting import Inpainter
 
+import config
+
 
 def get_timestamp(fname):
     """For a Dynamic Studio export file, find the line in the header
@@ -1200,7 +1202,8 @@ class WavelessRun(H5Cache):
     as we just load all of the vectors in the hdf5. This isn't safe
     in that we could end up loading things that aren't valid but it
     should be temporary."""
-    def __init__(self, cache_path):
+    def __init__(self, index):
+        cache_path = config.default_processed + 'waveless/' + index + '.hdf5'
         self.init_cache(cache_path)
         self.load()
 
