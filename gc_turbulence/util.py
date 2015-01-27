@@ -4,7 +4,12 @@ import errno
 import multiprocessing as mp
 from multiprocessing.managers import BaseManager
 
-from progressbar import ProgressBar, Percentage, Bar, ETA, SimpleProgress
+try:
+    from progressbar import (ProgressBar, Percentage,
+                             Bar, ETA, SimpleProgress)
+except ImportError:
+    from conda.progressbar import (ProgressBar, Percentage,
+                                   Bar, ETA, SimpleProgress)
 
 
 def makedirs_p(path):
