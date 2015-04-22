@@ -932,7 +932,7 @@ class FrontTransformer(object):
 
         self.dt = run.dt
 
-        self.front_time = run.ft[None, ..., None]
+        self.front_time = run.ft[:][None, ..., None]
 
         self.T_shape = run.T.shape
         self.Tmin = np.min(run.T)
