@@ -45,8 +45,6 @@ import scipy.ndimage as ndi
 
 from sklearn.neighbors import KernelDensity
 
-import modred as mr
-
 
 def subplot(plot_function):
     """Wrapper for functions that plot on a matplotlib axes instance
