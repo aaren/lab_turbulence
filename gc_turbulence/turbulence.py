@@ -1074,9 +1074,9 @@ class WaveGobbler(PreProcessor):
         self.V = self.run.V[...]
         self.W = self.run.W[...]
 
-        self.X = self.run.X[...]
-        self.Z = self.run.Z[...]
-        self.T = self.run.T[...]
+        # self.X = self.run.X[...]
+        # self.Z = self.run.Z[...]
+        # self.T = self.run.T[...]
 
         run.dt = 0.01
         run.ft = run.ft[...]
