@@ -130,6 +130,16 @@ class Commander(object):
                 path = glob.glob(fname)[0]
                 self.file_info(path)
 
+    def start_time(self):
+        for item in self.items:
+            # try and get the attributes if hdf5
+            if h5py.is_hdf5(item):
+                h5 = h5py.File(item, 'r')
+                if 't' in h5.keys():
+                    print "{} Start time: {}".format(item, h5['t'][0, 0, 0])
+                else:
+                    print "{}: N/A".format(item)
+
     def file_info(self, item):
         renamer = Renamer()
         index = renamer.get_index_from_file(item)
@@ -155,6 +165,9 @@ class Commander(object):
         print "\t### Datasets:"
         for k in h5.keys():
             print info_line(h5[k])
+
+        if 't' in h5.keys():
+            print "\n\t### Start time:", h5['t'][0, 0, 0]
 
         print "\n\t### Attributes:"
         for k, v in h5.attrs.items():
