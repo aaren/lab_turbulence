@@ -1196,6 +1196,8 @@ class ProcessedRun(VectorAttributes, H5Cache):
             self.init_cache(self.cache_path)
             self.load(force=forced_load)
 
+            self.index = self.attributes['run_index']
+
 
 class WavelessRun(H5Cache):
     """Stub for a waveless run. Don't inherit from VectorAttributes
