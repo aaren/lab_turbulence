@@ -505,8 +505,8 @@ class VectorAttributes(object):
     # right (0.10, 0.02).
     # TODO: do lock relative transform first and change these to
     # lock relative coords
-    valid_region_xlim = (-0.07, 0.09)
-    valid_region_ylim = (-0.10, 0.02)
+    valid_region_xlim = (-0.070, 0.09)
+    valid_region_ylim = (-0.094, 0.02)
 
     # data vertical step (m)
     dz = 0.00116
