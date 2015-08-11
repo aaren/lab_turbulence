@@ -508,7 +508,11 @@ class VectorAttributes(object):
     valid_region_xlim = (-0.07, 0.09)
     valid_region_ylim = (-0.10, 0.02)
 
-    # the time step of the data
+    # data vertical step (m)
+    dz = 0.00116
+    # data horizontal step (m)
+    dx = 0.00144
+    # data time step (s)
     dt = 0.01
 
     # the names of the attributes that an instance should have
