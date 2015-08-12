@@ -4,9 +4,9 @@ import util
 
 from runbase import SingleLayerFrame, SingleLayerRun
 
-from turbulence import ProcessedRun
-from turbulence import WavelessRun
-from turbulence import PreProcessor
+from processing import ProcessedRun
+from processing import WavelessRun
+from processing import PreProcessor
 
 from attributes import Parameters
 
