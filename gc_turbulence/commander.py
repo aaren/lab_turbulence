@@ -8,10 +8,10 @@ import logging
 
 import h5py
 
-from turbulence import SingleLayerFrame
-from turbulence import SingleLayerRun
-from turbulence import PreProcessor
-from turbulence import Parameters
+from .runbase import SingleLayerFrame
+from .runbase import SingleLayerRun
+from .processing import PreProcessor
+from .attributes import Parameters
 
 
 logging.basicConfig(filename='process.log', level=logging.DEBUG)
