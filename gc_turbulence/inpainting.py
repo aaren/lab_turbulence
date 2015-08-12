@@ -1,4 +1,5 @@
 import sys
+import logging
 import multiprocessing as mp
 
 import numpy as np
@@ -113,20 +114,20 @@ class Inpainter(object):
         self.outer_slices = [slice(None, None, s - 1)
                              for s in self.invalid.shape]
 
-    def construct_points(self, slice, isvolume=True):
+        self.outer_slices = [np.s_[0, :, 0:8000], np.s_[-1, :, 0:8000],
+                             np.s_[:, 0, 0:8000], np.s_[:, -1, 0:8000],
+                             np.s_[:, :, 0], np.s_[:, :, -1],
+                             ]
+
+    def construct_points(self, slice, which):
         """Find the valid shell within a given slice and return the
         coordinates and values of the points in the shell.
 
         isvolume lets you define a mask that is used to further
         select points inside the slice.
         """
-        # mask that selects points that are within the slice AND
-        # part of the shell of valid points AND part of the volume
-        # that the slice is built around
-        shell = self.complete_valid_shell[slice] & isvolume
-
-        valid_points = np.vstack(c[slice][shell] for c in self.coords).T
-        valid_values = np.vstack(d[slice][shell] for d in self.data).T
+        valid_points = np.vstack(c[slice][which] for c in self.coords).T
+        valid_values = np.vstack(d[slice][which] for d in self.data).T
 
         return valid_points, valid_values
 
@@ -163,7 +164,7 @@ class Inpainter(object):
         """How many nans are remaining in the data."""
         return sum(np.isnan(d).sum() for d in self.data)
 
-    def burst(self, s):
+    def burst(self, s, overlap=None, maxsize=None):
         """Split a three axis slice into a number of smaller
         slices with a maximum size on the third axis and an
         overlap.
@@ -176,10 +177,13 @@ class Inpainter(object):
         get an overlap between slices and no slice thinner than
         the overlap unless it is the only slice.
         """
+        overlap = overlap or self.slice_overlap
+        maxsize = maxsize or self.max_slice_size
+
         sz, sx, st = s
         # define the left and right edges of the bins
-        r = range(st.start, st.stop, self.max_slice_size)[1:] + [st.stop]
-        l = [st.start] + [e - self.slice_overlap for e in r[:-1]]
+        r = range(st.start, st.stop, maxsize)[1:] + [st.stop]
+        l = [st.start] + [e - overlap for e in r[:-1]]
         # edge case comes when the list
         return [(sz, sx, slice(i, j, None)) for i, j in zip(l, r)]
 
@@ -192,14 +196,41 @@ class Inpainter(object):
         burst into smaller slices.
         """
         for i, s in enumerate(self.slices):
-            for bs in self.burst(s):
+            for slice in self.burst(s):
                 # mask that selects the points in the burst slice
                 # that are in the volume that the origin slice was
                 # constructed to surround
-                volume = self.volumes[bs] == i + 1
+                volume = self.volumes[slice] == i + 1
                 # what if volume is empty (all false)?
-                valid_points, valid_values = self.construct_points(bs, volume)
-                yield (bs, valid_points, valid_values)
+
+                # mask that selects points that are within the slice AND
+                # part of the shell of valid points AND part of the volume
+                # that the slice is built around
+                shell = self.complete_valid_shell[slice] & volume
+
+                valid_points, valid_values = self.construct_points(slice,
+                                                                   which=shell)
+                yield (slice, valid_points, valid_values)
+
+    @property
+    def valid_outer_points_generator(self):
+        """Construct valid points in a slice from the volume that
+        created the slice.
+
+        If the slice is large in extent in the time axis, it is
+        burst into smaller slices.
+        """
+        burst_slices = [self.burst(slice, maxsize=100)
+                        for slice in self.outer_slices[:-2]]
+        burst_slices = np.array(burst_slices).reshape((-1, 3))
+        burst_slices = np.vstack((burst_slices, self.outer_slices[-2:]))
+
+        for slice in burst_slices:
+            slice = list(slice)
+            nans = self.invalid[slice]
+            valid_points, valid_values = self.construct_points(slice,
+                                                               which=~nans)
+            yield (slice, valid_points, valid_values)
 
     def process_parallel(self, processors=20, recursion=0):
         """Fill in the invalid regions of the data, using parallel
@@ -242,7 +273,7 @@ class Inpainter(object):
         output_stack = mp.Queue()
 
         pkwargs = {'target': processor,
-                   'args':  (construct_interpolator,
+                   'args':  (construct_linear_interpolator,
                              input_stack,
                              output_stack)}
 
@@ -292,7 +323,7 @@ class Inpainter(object):
         for args in self.valid_points_generator:
             print "\rInterpolation over {}".format(args[0]),
             sys.stdout.flush()
-            slice, interpolator = construct_interpolator(args)
+            slice, interpolator = construct_linear_interpolator(args)
             self.evaluate_and_write(slice, interpolator)
 
         print "\n"
@@ -307,18 +338,39 @@ class Inpainter(object):
         is because we need to serialise for multi processing that we
         end up with a big class.
         """
+        for args in self.valid_outer_points_generator:
+            print "\rInterpolation over {}".format(args[0]),
+            sys.stdout.flush()
+            slice, interpolator = construct_nearest_interpolator(args)
+            self.evaluate_and_write(slice, interpolator)
+
+    def process_outer_old(self):
+        """Apply nearest neighbour interpolation to the corners of
+        the array. You might wonder why we don't just use this
+        method with a linear interpolator to do the whole thing: it
+        is because we need to serialise for multi processing that we
+        end up with a big class.
+        """
         for slice in self.outer_slices:
+            logging.info('using {}'.format(slice))
             nans = self.invalid[slice]
+            logging.info('found {} nans'.format(nans.sum()))
 
             valid_points = np.vstack(c[slice][~nans] for c in self.coords).T
             valid_values = np.vstack(d[slice][~nans] for d in self.data).T
+
+            dim = valid_points.shape
+            logging.info('creating interpolator over {}'.format(dim))
 
             interpolator = interp.NearestNDInterpolator(valid_points,
                                                         valid_values)
 
             invalid_points = np.vstack(c[slice][nans] for c in self.coords).T
+            idim = invalid_points.shape
+            logging.info('interpolating over {}'.format(idim))
             invalid_values = interpolator(invalid_points).astype(np.float32)
 
+            logging.info('copying data')
             for i, d in enumerate(self.data):
                 # only copy across values that aren't nan
                 values = invalid_values[:, i]
@@ -334,7 +386,19 @@ class Inpainter(object):
             self.process_parallel(processors=processors, recursion=recursion)
 
 
-def construct_interpolator((slice, coordinates, values)):
+def construct_nearest_interpolator((slice, coordinates, values)):
+    """Construct a linear interpolator for given coordinates and values.
+
+    This function is here because it needs to be pickleable for
+    multiprocessing.
+
+    slice is just passed through as state that we need for post
+    processing the multiprocessing output.
+    """
+    return slice, interp.NearestNDInterpolator(coordinates, values)
+
+
+def construct_linear_interpolator((slice, coordinates, values)):
     """Construct a linear interpolator for given coordinates and values.
 
     This function is here because it needs to be pickleable for
