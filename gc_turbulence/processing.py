@@ -11,7 +11,7 @@ import scipy.ndimage as ndi
 
 from .runbase import H5Cache
 from .inpainting import Inpainter
-from .transform import FrontTransformer, front_speed
+from .transform import front_speed
 from .attributes import ProcessorAttributes, ProcessedAttributes
 
 import config
@@ -233,132 +233,6 @@ class PreProcessor(ProcessorAttributes, H5Cache):
         h5file.close()
 
 
-class WaveGobbler(PreProcessor):
-    """Isolate surface wave signal in velocity data."""
-    # new attributes that reference wave data
-    wave_vectors = [('U_waves', np.float32),
-                    ('V_waves', np.float32),
-                    ('W_waves', np.float32),
-                    ]
-    init_vectors = PreProcessor.vectors.descr
-    vectors = np.dtype(init_vectors + wave_vectors)
-
-    def __init__(self, run):
-        self.run = run
-
-        self.U = self.run.U[...]
-        self.V = self.run.V[...]
-        self.W = self.run.W[...]
-
-        # self.X = self.run.X[...]
-        # self.Z = self.run.Z[...]
-        # self.T = self.run.T[...]
-
-        run.dt = 0.01
-        run.ft = run.ft[...]
-        self.transformer = FrontTransformer(run)
-
-    def get_waves(self, velocity, order=0):
-        trans = self.transformer
-        uf = trans.to_front(velocity, order=order)
-
-        # compute mean from uf
-        mean_uf = np.mean(uf, axis=1, keepdims=True)
-        # expand mean over all x
-        full_mean_uf = np.repeat(mean_uf, uf.shape[1], axis=1)
-        # transform to lab frame
-        trans_mean_uf = trans.to_lab(full_mean_uf, order=0)
-        # subtract mean current from lab frame
-        mean_sub_u = velocity - trans_mean_uf
-
-        # waves_xz = np.mean(np.mean(mean_sub_u, axis=0, keepdims=True),
-        #                    axis=1, keepdims=True)
-        waves_z = np.mean(mean_sub_u, axis=0, keepdims=True)
-        return waves_z
-
-    def get_clever_waves(self, velocity, order=0):
-        trans = self.transformer
-        uf = trans.to_front(velocity, order=order)
-
-        # compute mean from uf
-        # TODO: set as property
-        mean_uf = np.mean(uf, axis=1, keepdims=True)
-        # expand mean over all x
-        full_mean_uf = np.repeat(mean_uf, uf.shape[1], axis=1)
-        # transform to lab frame
-        trans_mean_uf = trans.to_lab(full_mean_uf, order=order)
-        # subtract mean current from lab frame
-        mean_sub_u = velocity - trans_mean_uf
-
-        # compute wave field as mean(x, z)
-        waves_xz = np.mean(np.mean(mean_sub_u, axis=0, keepdims=True),
-                           axis=1, keepdims=True)
-        # waves_z = np.mean(mean_sub_u, axis=0, keepdims=True)
-
-        # subtract wave field from mean subtracted u to find the current
-        # signal that is not captured by the mean that varies in x
-        varying_current = mean_sub_u - waves_xz
-
-        # transform varying current back to front frame
-        trans_varying_current = trans.to_front(varying_current, order=order)
-
-        # subtract the varying current from the velocity
-        # and compute a new mean
-        new_mean = np.mean(uf - trans_varying_current, axis=1, keepdims=True)
-        full_new_mean = np.repeat(new_mean, uf.shape[1], axis=1)
-        trans_new_mean = trans.to_lab(full_new_mean, order=order)
-
-        # subtract transformed mean from u
-        new_mean_sub_u = velocity - trans_new_mean - varying_current
-
-        # compute new waves
-        new_waves = np.mean(new_mean_sub_u, axis=0, keepdims=True)
-
-        return new_waves
-
-    def gobble(self, velocity, order=0):
-        waves = self.get_waves(velocity, order)
-        return velocity - waves
-
-    def process(self, velocity):
-        """velocity - string that specifies attribute to treat as velocity
-                      (e.g. 'U')
-
-        Take the velocity data and extract the waves.
-
-        Subtract the waves from the velocity and replace the
-        velocity data with this.
-
-        """
-        data = getattr(self.run, velocity)
-        waves = self.get_clever_waves(data)
-        data_ = data - waves
-        setattr(self, velocity, data_)
-        setattr(self, velocity + '_waves', waves)
-
-    def complete_processing(self):
-        """Do the remaining preprocessing steps."""
-        self.transform_to_front_relative()
-        self.non_dimensionalise()
-        self.has_executed = True
-
-        # create new path as original with 'waveless' dir
-        dirname = os.path.dirname(self.run.cache_path)
-        fname = os.path.basename(self.run.cache_path)
-        waveless_path = os.path.join(dirname, 'waveless', fname)
-
-        print "writing data to ", waveless_path
-        self.write_data(waveless_path)
-
-    def process_all(self):
-        for v in ('U', 'V', 'W'):
-            print 'processing waves...', v
-            self.process(v)
-
-        print "completing processing..."
-        self.complete_processing()
-
-
 class ProcessedRun(ProcessedAttributes, H5Cache):
     """Wrapper around a run that has had its data quality controlled."""
     def __init__(self, cache_path=None, forced_load=False):
@@ -373,14 +247,3 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
             self.load(force=forced_load)
 
             self.index = self.attributes['run_index']
-
-
-class WavelessRun(H5Cache):
-    """Stub for a waveless run. Don't inherit from VectorAttributes
-    as we just load all of the vectors in the hdf5. This isn't safe
-    in that we could end up loading things that aren't valid but it
-    should be temporary."""
-    def __init__(self, index):
-        cache_path = config.default_processed + 'waveless/' + index + '.hdf5'
-        self.init_cache(cache_path)
-        self.load()
