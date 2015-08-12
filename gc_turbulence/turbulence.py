@@ -489,7 +489,16 @@ class SingleLayerRun(H5Cache):
         return timestamps
 
 
-class VectorAttributes(object):
+class BaseAttributes(object):
+    # data vertical step (m)
+    dz = 0.00116
+    # data horizontal step (m)
+    dx = 0.00144
+    # data time step (s)
+    dt = 0.01
+
+
+class ProcessorAttributes(BaseAttributes):
     """Class attributes that define vector names / types and
     measurements used in data processing.
 
@@ -512,13 +521,8 @@ class VectorAttributes(object):
     valid_region_xlim = (-0.070, 0.09)
     valid_region_ylim = (-0.094, 0.02)
 
-    # data vertical step (m)
-    dz = 0.00116
-    # data horizontal step (m)
-    dx = 0.00144
-    # data time step (s)
-    dt = 0.01
 
+class ProcessedAttributes(BaseAttributes):
     # the names of the attributes that an instance should have
     # after running self.execute()
     vectors = [('X',  np.float32),  # streamwise coordinates
@@ -531,7 +535,7 @@ class VectorAttributes(object):
     vectors = np.dtype(vectors)
 
 
-class PreProcessor(VectorAttributes, H5Cache):
+class PreProcessor(ProcessorAttributes, H5Cache):
     """Apply basic pre processing to raw Dynamic Studio output to make
     it usable in analysis.
 
@@ -873,7 +877,7 @@ class WaveGobbler(PreProcessor):
         self.complete_processing()
 
 
-class ProcessedRun(VectorAttributes, H5Cache):
+class ProcessedRun(ProcessedAttributes, H5Cache):
     """Wrapper around a run that has had its data quality controlled."""
     def __init__(self, cache_path=None, forced_load=False):
         """Initialise a processed run.
