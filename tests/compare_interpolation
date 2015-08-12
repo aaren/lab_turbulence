@@ -1,0 +1,7 @@
+#!/bin/bash
+
+(time python interpolate_compare.py main_parallel) 2>&1 | tee -a log
+(time python interpolate_compare.py alt_main_parallel) 2>&1 | tee -a log
+(time python interpolate_compare.py alt_alt_main_parallel) 2>&1 | tee -a log
+(time python interpolate_compare.py full_state_main_parallel) 2>&1 | tee -a log
+

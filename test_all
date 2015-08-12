@@ -1,7 +1,0 @@
-#!/bin/bash
-
-(time python test_interpolate.py main_parallel) 2>&1 | tee -a log
-(time python test_interpolate.py alt_main_parallel) 2>&1 | tee -a log
-(time python test_interpolate.py alt_alt_main_parallel) 2>&1 | tee -a log
-(time python test_interpolate.py full_state_main_parallel) 2>&1 | tee -a log
-
