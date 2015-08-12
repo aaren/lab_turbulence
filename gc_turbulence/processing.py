@@ -5,11 +5,11 @@ import numpy as np
 import h5py
 import scipy.ndimage as ndi
 
-from .runbase import H5Cache
-from .inpainting import Inpainter
-from .transform import front_speed
 from .attributes import ProcessorAttributes, ProcessedAttributes
+from .inpainting import Inpainter
 from .filters import butterpass
+from .runbase import H5Cache
+from .transform import front_speed
 from .waves import WaveExtractor
 
 
