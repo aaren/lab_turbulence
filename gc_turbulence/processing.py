@@ -1,3 +1,4 @@
+from functools import partial
 import logging
 
 import numpy as np
@@ -8,6 +9,8 @@ from .runbase import H5Cache
 from .inpainting import Inpainter
 from .transform import front_speed
 from .attributes import ProcessorAttributes, ProcessedAttributes
+from .filters import butterpass
+from .waves import WaveExtractor
 
 
 class PreProcessor(ProcessorAttributes, H5Cache):
@@ -240,3 +243,45 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
             self.load(force=forced_load)
 
             self.index = self.attributes['run_index']
+
+            self.init_vectors()
+
+    def init_vectors(self):
+        self.z = self.Z[:, 0, 0]
+        self.x = self.X[0, :, 0]
+        self.t = self.T[0, 0, :]
+
+    def critical_frequency(self):
+        """Calculate the frequency below which we expect periodic features
+        to not be averaged out by mean subtraction.
+        """
+        c = self.front_speed.value
+        x = self.X[0, :, 0]
+        fcrit = c / (x.max() - x.min())
+        return fcrit
+
+    def get_waves(self, component='u', tmin=0, tmax=3000):
+        velocity = getattr(self, component.upper())
+        preindex = np.s_[..., tmin:tmax]
+        pre_front = velocity[preindex].mean(axis=0)
+
+        full_length = self.t.size - tmin
+
+        extractor = WaveExtractor(component=component, z=self.z, x=self.x)
+
+        self.pre_waves = extractor.extract_waves(data=pre_front,
+                                                 nf=4,
+                                                 component=component,
+                                                 length=full_length)
+
+        prewaveless = velocity[..., tmin:] \
+            - self.pre_waves.sum(axis=1)[..., :full_length]
+
+        bandpass = partial(butterpass, order=6)
+        self.zxwaves = extractor.get_zxwaves(prewaveless,
+                                             component=component,
+                                             cutoff=0.45,
+                                             bandpass=bandpass)
+
+        prewaveless = prewaveless - self.zxwaves
+        self.background = prewaveless[..., :tmax].mean(axis=-1, keepdims=True)
