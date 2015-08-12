@@ -100,7 +100,7 @@ class Inpainter(object):
 
         # big slices cause us problems so split them up into smaller
         # slices of a maximum width in time index
-        # this actually hapens again in self.valid_points_gen, we
+        # this actually hapens again in self.valid_points_generator, we
         # just do it here to find out the total length
         self.burst_slices = [s for original in slices
                              for s in self.burst(original)]
@@ -184,7 +184,7 @@ class Inpainter(object):
         return [(sz, sx, slice(i, j, None)) for i, j in zip(l, r)]
 
     @property
-    def valid_points_gen(self):
+    def valid_points_generator(self):
         """Construct valid points in a slice from the volume that
         created the slice.
 
@@ -246,7 +246,7 @@ class Inpainter(object):
         print "Processes started and waiting"
 
         # populate the queue
-        for data in self.valid_points_gen:
+        for data in self.valid_points_generator:
             input_stack.put(data)
 
         # add sentinels to stop processors
@@ -278,9 +278,8 @@ class Inpainter(object):
         """Single core interpolation"""
         print "\n"
         self.process_outer()
-        valid_points_gen = self.valid_points_gen
 
-        for args in valid_points_gen:
+        for args in self.valid_points_generator:
             print "\rInterpolation over {}".format(args[0]),
             sys.stdout.flush()
             slice, interpolator = construct_interpolator(args)
