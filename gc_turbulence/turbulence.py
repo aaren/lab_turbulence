@@ -524,19 +524,6 @@ class VectorAttributes(object):
                ('U',  np.float32),  # streamwise velocity
                ('V',  np.float32),  # cross stream velocity
                ('W',  np.float32),  # vertical velocity
-               ## NON DIMENSIONALISED copies of the above
-               ('X_',  np.float32),  # streamwise coordinates
-               ('Z_',  np.float32),  # vertical coordinates
-               ('T_',  np.float32),  # time coordinates
-               ('U_',  np.float32),  # streamwise velocity
-               ('V_',  np.float32),  # cross stream velocity
-               ('W_',  np.float32),  # vertical velocity
-               ('Xf_', np.float32),  # front relative streamwise coords
-               ('Zf_', np.float32),  # front relative vertical coords
-               ('Tf_', np.float32),  # front relative time coords
-               ('Uf_', np.float32),  # front relative streamwise velocity
-               ('Vf_', np.float32),  # front relative cross stream velocity
-               ('Wf_', np.float32),  # front relative vertical velocity
                ]
     vectors = np.dtype(vectors)
 
@@ -580,7 +567,7 @@ class PreProcessor(VectorAttributes, H5Cache):
                  'filter_zeroes',
                  'interpolate_nan',
                  'transform_to_lock_relative',  # TODO: put this first
-                 'non_dimensionalise']
+                 ]
 
         for step in steps:
             getattr(self, step)()
