@@ -13,6 +13,19 @@ class BaseAttributes(object):
     dt = 0.01
 
 
+class ProcessedVectors(object):
+    # the names of the attributes that an instance should have
+    # after running self.execute()
+    vectors = [('X',  np.float32),  # streamwise coordinates
+               ('Z',  np.float32),  # vertical coordinates
+               ('T',  np.float32),  # time coordinates
+               ('U',  np.float32),  # streamwise velocity
+               ('V',  np.float32),  # cross stream velocity
+               ('W',  np.float32),  # vertical velocity
+               ]
+    vectors = np.dtype(vectors)
+
+
 class ProcessorAttributes(BaseAttributes):
     """Class attributes that define vector names / types and
     measurements used in data processing.
@@ -36,18 +49,11 @@ class ProcessorAttributes(BaseAttributes):
     valid_region_xlim = (-0.070, 0.09)
     valid_region_ylim = (-0.094, 0.02)
 
+    vectors = ProcessedVectors.vectors
+
 
 class ProcessedAttributes(BaseAttributes):
-    # the names of the attributes that an instance should have
-    # after running self.execute()
-    vectors = [('X',  np.float32),  # streamwise coordinates
-               ('Z',  np.float32),  # vertical coordinates
-               ('T',  np.float32),  # time coordinates
-               ('U',  np.float32),  # streamwise velocity
-               ('V',  np.float32),  # cross stream velocity
-               ('W',  np.float32),  # vertical velocity
-               ]
-    vectors = np.dtype(vectors)
+    vectors = ProcessedVectors.vectors
 
 
 class Parameters(object):
