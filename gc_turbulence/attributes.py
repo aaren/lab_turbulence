@@ -1,7 +1,8 @@
-import os
 from collections import OrderedDict
 
 import numpy as np
+
+import config
 
 
 class BaseAttributes(object):
@@ -65,9 +66,9 @@ class Parameters(object):
     a (ordered) dictionary of the run parameters.
     """
     # TODO: this path should be in init or config or somewhere else
-    root = os.environ['HOME'] + '/lab/data/flume2/main_data/'
-    single_layer_parameters = os.path.join(root, 'params_single_layer')
-    two_layer_parameters = os.path.join(root, 'params_two_layer')
+    root = config.default_root
+    single_layer_parameters = config.single_layer_parameters
+    two_layer_parameters = config.two_layer_parameters
 
     single_layer_headers = [('run_index',        '|S10'),
                             ('H',                np.float),
