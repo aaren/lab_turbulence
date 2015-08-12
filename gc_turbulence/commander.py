@@ -1,6 +1,7 @@
 """Command line interface"""
 import re
 import argparse
+from argparse import RawTextHelpFormatter
 import os
 import glob
 import logging
@@ -15,9 +16,40 @@ from turbulence import Parameters
 
 logging.basicConfig(filename='process.log', level=logging.DEBUG)
 
+example_use = r"""
+Commands that can be used:
+
+    list - simple listing of the matched files
+
+    rename - change folder names from run hash to run index
+
+    assimilate - import raw data from csv to hdf5.
+
+        --pattern: hash code of run (or some unique id in filename)
+
+        --rex: optional expression to match after pattern.
+               regex is '*{pattern}*{rex}*'
+
+        --cache: directory to save cache files to (default 'cache')
+
+        --new: only import runs that aren't already in cache
+
+    info - show information about a run index / csv / hdf5
+
+    start_time - show the start time of a hdf5
+
+    pre_process - perform pre-processing on given runs. Requires hdf5
+                  as input.  Outputs (not much) information to 'process.log'.
+
+        --output: directory to save output in (default 'processed')
+
+        --single: process single layer runs only
+"""
+
 
 def cli():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(epilog=example_use,
+                                     formatter_class=RawTextHelpFormatter)
 
     parser.add_argument('command',
                         help="The command that you wish to execute.")
