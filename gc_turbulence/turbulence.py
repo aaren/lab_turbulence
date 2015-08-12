@@ -1,6 +1,7 @@
 import os
 import glob
 from collections import OrderedDict
+import logging
 
 if 'DISPLAY' not in os.environ:
     import matplotlib as mpl
@@ -223,7 +224,9 @@ class H5Cache(object):
         different_names = set(vector_names).difference(self.h5file.keys())
 
         if different_names and not force:
-            raise TypeError('Vector names are different to hdf5 keys')
+            raise TypeError(('Vector names are different to hdf5 keys\n'
+                             '{}'.format(different_names)))
+
         elif different_names and force:
             print 'Vector names are different to hdf5 keys. Overriding...'
             vector_names = self.h5file.keys()
@@ -570,7 +573,10 @@ class PreProcessor(VectorAttributes, H5Cache):
                  ]
 
         for step in steps:
-            getattr(self, step)()
+            logging.info('starting {}'.format(step))
+            processor = getattr(self, step)
+            processor()
+            logging.info('finished {}'.format(step))
 
         self.has_executed = True
 

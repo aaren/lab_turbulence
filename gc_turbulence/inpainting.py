@@ -214,7 +214,14 @@ class Inpainter(object):
         allowed to happen. Setting 0 or False will have no
         recursion. Setting it to -1 will recurse forever.
         """
+        print "inpainting by parallel method..."
+        sys.stdout.flush()
+
+        print "processing outer region..."
+        sys.stdout.flush()
         self.process_outer()
+        print "done"
+        sys.stdout.flush()
 
         def processor(function, inputs, outputs, sentinel='DONE'):
             """Simple threading processor that reads from the inputs
@@ -241,9 +248,12 @@ class Inpainter(object):
 
         processes = [mp.Process(**pkwargs) for _ in range(processors)]
 
+        print "Starting processes..."
+        sys.stdout.flush()
         for p in processes:
             p.start()
-        print "Processes started and waiting"
+        print len(processes), "Processes started and waiting"
+        sys.stdout.flush()
 
         # populate the queue
         for data in self.valid_points_generator:
