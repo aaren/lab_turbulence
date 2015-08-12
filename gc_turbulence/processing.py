@@ -1,9 +1,4 @@
-import os
 import logging
-
-if 'DISPLAY' not in os.environ:
-    import matplotlib as mpl
-    mpl.use('Agg')
 
 import numpy as np
 import h5py
@@ -13,8 +8,6 @@ from .runbase import H5Cache
 from .inpainting import Inpainter
 from .transform import front_speed
 from .attributes import ProcessorAttributes, ProcessedAttributes
-
-import config
 
 
 class PreProcessor(ProcessorAttributes, H5Cache):
