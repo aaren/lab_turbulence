@@ -654,7 +654,7 @@ class PreProcessor(VectorAttributes, H5Cache):
             scale = front_speed(self)
 
         inpainter = Inpainter(self, sub_region=sub_region, scale=scale)
-        inpainter.paint(processors=20)
+        inpainter.paint(processors=12)
 
     def non_dimensionalise(self):
         """Take the original, dimensional run data, divide by length
