@@ -360,6 +360,7 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
         h5file = h5py.File(path, 'w')
 
         for vector in self.save_vectors.names:
+            logging.info('writing {}'.format(vector))
             data = getattr(self, vector)
             h5file.create_dataset(vector, data.shape, dtype=data.dtype)
             h5file[vector][...] = data
