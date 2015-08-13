@@ -10,14 +10,14 @@ def kn(n, L):
     return np.pi * n / L
 
 
-def standing_frequency(n=None, k=None, g=9.81, H=1):
+def standing_frequency(n=None, k=None, g=9.81, H=1, L=1):
     """Standing wave frequency for a given mode number or
     wave number.
     """
     if n is None and k is None:
         return
     elif k is None:
-        k = kn(n)
+        k = kn(n, L=L)
     w2 = g * k * np.tanh(k * H)
     return np.sqrt(w2) / (2 * np.pi)
 
@@ -33,21 +33,34 @@ def vertical_w(z, k, H=0.25):
 
 
 class StandingWaves(object):
+    """Standing wave constructor for given rectangular tank
+    geometry.
+
+    Determines frequencies of waves and vertical profiles
+    for given frequencies. Can also produce a map of vertical
+    profile over (z, k).
+    """
     def __init__(self, L=5.50, H=0.25, g=9.81, z=None,
                  freqs=None, fmax=20, fres=500):
         self.L = L
         self.H = H
         self.g = g
 
-        self.z = z or np.linspace(0, 1)
-        self.freqs = freqs or np.linspace(0, fmax, fres)
+        if z is None:
+            z = np.linspace(0, 1)
+
+        if freqs is None:
+            freqs = np.linspace(0, fmax, fres)
+
+        self.z = z
+        self.freqs = freqs
 
     def standing_frequency(self, n=None, k=None, scaling=1.006):
         return scaling * standing_frequency(n=n,
                                             k=k,
-                                            scaling=scaling,
                                             g=self.g,
-                                            H=self.H)
+                                            H=self.H,
+                                            L=self.L)
 
     def vertical_u(self, z, k):
         return vertical_u(z, k, H=self.H)

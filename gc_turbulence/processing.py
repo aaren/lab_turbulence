@@ -260,7 +260,7 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
         fcrit = c / (x.max() - x.min())
         return fcrit
 
-    def get_waves(self, component='u', tmin=0, tmax=3000):
+    def get_waves(self, component='u', tmin=0, tmax=3000, vertical=True):
         velocity = getattr(self, component.upper())
         preindex = np.s_[..., tmin:tmax]
         pre_front = velocity[preindex].mean(axis=0)
@@ -272,10 +272,11 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
         self.pre_waves = extractor.extract_waves(data=pre_front,
                                                  nf=4,
                                                  component=component,
-                                                 length=full_length)
+                                                 length=full_length,
+                                                 vertical=vertical)
 
         prewaveless = velocity[..., tmin:] \
-            - self.pre_waves.sum(axis=1)[..., :full_length]
+            - self.pre_waves.sum(axis=-1)[..., :full_length]
 
         bandpass = partial(butterpass, order=6)
         self.zxwaves = extractor.get_zxwaves(prewaveless,

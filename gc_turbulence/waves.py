@@ -32,72 +32,40 @@ def find_closest_peaks(power, freqs, guess_freqs):
 
 
 def construct_wave(amplitude, f, time, decay=0):
-    return amplitude * np.exp(2j * np.pi * f * time) * np.exp(decay * time)
+    wave = amplitude * np.exp(2j * np.pi * f * time) * np.exp(decay * time)
+    return wave.real
 
 
-def wave_fft(amplitude, f, size, window, dt, decay=0):
+def wave_fft(amplitude, frequency, size, window, dt, decay=0):
     time = np.arange(window.size) * dt
     wave = (2 / window.sum()) \
-        * construct_wave(amplitude, f, time, decay=decay) \
+        * construct_wave(amplitude, frequency, time, decay=decay) \
         * window
     return np.fft.rfft(wave, size)
 
 
-def subtract_amplitude_fft(fft, amplitude, f, size, window, decay=0):
-    return fft - wave_fft(amplitude, f, size, window, decay=decay)
+def subtract_amplitude_fft(fft, amplitude, frequency,
+                           size, window, dt, decay=0):
+    return fft - wave_fft(amplitude, frequency, size,
+                          window, dt, decay=decay)
 
 
-def minimise_this_decay((amplitude_re, f, amplitude_im, decay),
-                        fft, size, window):
+def minimise_this_decay((amplitude_re, frequency, amplitude_im, decay),
+                        fft, size, window, dt):
     amplitude = np.complex(amplitude_re, amplitude_im)
-    return np.linalg.norm(subtract_amplitude_fft(fft, amplitude, f,
-                                                 size, window, decay=decay))
-
-
-def minimise_power_decay(f, fft, freqs, size, window, bounds=None):
-    power = np.abs(fft)
-    peak = find_closest_peaks(power, np.array(freqs),
-                              guess_freqs=np.array([f]))
-    idx = np.abs(freqs - f).argmin()
-
-    idx = peak
-
-    amplitude = power[idx]
-    # get phase from the fft (assume it doesn't change)
-    #  phase = np.angle(fft[idx])
-
-    amplitude = fft[idx]
-
-    if bounds is not None:
-        damp = np.abs(amplitude) * 0.3
-        bounds = [(amplitude.real - damp, amplitude.real + damp),
-                  bounds,
-                  (amplitude.imag - damp, amplitude.imag + damp),
-                  (-0.02, -0.002)]
-    minim = opt.minimize(minimise_this_decay,
-                         # method='TNC',
-                         x0=(amplitude.real,
-                             freqs[peak],
-                             amplitude.imag,
-                             -0.007),
-                         args=(fft, size, window),
-                         bounds=bounds)
-
-    opt_amplitude_re = minim.x[0]
-    opt_freq = minim.x[1]
-    opt_amplitude_im = minim.x[2]
-    opt_decay = minim.x[3]
-
-    camplitude = np.complex(opt_amplitude_re, opt_amplitude_im)
-
-    return camplitude, opt_freq, opt_decay, wave_fft(camplitude, opt_freq,
-                                                     size, window, opt_decay)
+    return np.linalg.norm(subtract_amplitude_fft(fft=fft,
+                                                 amplitude=amplitude,
+                                                 frequency=frequency,
+                                                 size=size,
+                                                 window=window,
+                                                 dt=dt,
+                                                 decay=decay))
 
 
 class WaveExtractor(object):
     def __init__(self, component, z, x):
         self.component = component
-        self.waves = StandingWaves(z=z)
+        self.waves = StandingWaves(z=z, L=5.5, H=0.25, g=9.81)
         self.x = x
         self.z = z
 
@@ -112,7 +80,8 @@ class WaveExtractor(object):
 
         fft = np.fft.rfft(data * window, n=size, axis=-1)
 
-        result = self.comb_frequencies_decay(fft.mean(axis=0), nf=nf,
+        result = self.comb_frequencies_decay(fft.mean(axis=0),
+                                             nf=nf,
                                              window=window,
                                              size=size,
                                              plots=plots)
@@ -148,7 +117,7 @@ class WaveExtractor(object):
                                frequencies[None, None, None, :nf],
                                time=time[None, None, :, None],
                                decay=tdecay[None, None, None, :nf])
-        waves = (2 / window.sum()) * waves.real
+        waves = (2 / window.sum()) * waves
 
         if vertical:
             # compute vertical profile of computed frequencies
@@ -157,11 +126,12 @@ class WaveExtractor(object):
             profile = self.waves.theoretical_vertical_profile(self.z, k,
                                                               norm='mean',
                                                               component=component)
+            # returns [z, x, t, k]
             return profile[:, None, None, :] * waves
 
         else:
-            # remove the empty z axis, returning [x, t, k]
-            return waves.squeeze()
+            # n.b. returns [z, x, t, k], i.e. [1, x, t, k]
+            return waves
 
     def get_zxwaves(self, signal, component='u', cutoff=0.6,
                     bandpass=brickpass, flo=0.6, fhi=3):
@@ -213,10 +183,11 @@ class WaveExtractor(object):
         # power spectrum, subtracting the optimal wave each time.
         N = np.arange(1, nf + 1)
         standing_frequencies = self.waves.standing_frequency(n=N)
+
         for i, f in enumerate(standing_frequencies):
-            result = minimise_power_decay(f, fft, freqs,
-                                          size, window,
-                                          bounds=(f - df, f + df))
+            result = self.minimise_power_decay(f, fft, freqs,
+                                               size, window,
+                                               bounds=(f - df, f + df))
             amplitudes[i], frequencies[i], decay[i], peak_ffts[i] = result
             fft = fft - peak_ffts[i]
 
@@ -235,3 +206,46 @@ class WaveExtractor(object):
             plt.plot(freqs, np.abs(fft))
 
         return amplitudes, frequencies.real, decay, peak_ffts
+
+    def minimise_power_decay(self, f, fft, freqs, size, window, bounds=None):
+        power = np.abs(fft)
+        peak = find_closest_peaks(power, np.array(freqs),
+                                  guess_freqs=np.array([f]))
+        idx = np.abs(freqs - f).argmin()
+
+        idx = peak
+
+        amplitude = power[idx]
+        # get phase from the fft (assume it doesn't change)
+        #  phase = np.angle(fft[idx])
+
+        amplitude = fft[idx]
+
+        if bounds is not None:
+            damp = np.abs(amplitude) * 0.3
+            bounds = [(amplitude.real - damp, amplitude.real + damp),
+                      bounds,
+                      (amplitude.imag - damp, amplitude.imag + damp),
+                      (-0.02, -0.002)]
+        minim = opt.minimize(minimise_this_decay,
+                             # method='TNC',
+                             x0=(amplitude.real,
+                                 freqs[peak],
+                                 amplitude.imag,
+                                 -0.007),
+                             args=(fft, size, window, self.dt),
+                             bounds=bounds)
+
+        opt_amplitude_re = minim.x[0]
+        opt_freq = minim.x[1]
+        opt_amplitude_im = minim.x[2]
+        opt_decay = minim.x[3]
+
+        camplitude = np.complex(opt_amplitude_re, opt_amplitude_im)
+
+        return camplitude, opt_freq, opt_decay, wave_fft(amplitude=camplitude,
+                                                         frequency=opt_freq,
+                                                         size=size,
+                                                         window=window,
+                                                         dt=self.dt,
+                                                         decay=opt_decay)
