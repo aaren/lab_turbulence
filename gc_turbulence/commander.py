@@ -10,7 +10,7 @@ import h5py
 
 from .runbase import RawFrame
 from .runbase import RawRun
-from .processing import PreProcessor
+from .processing import PreProcessor, ProcessedRun
 from .attributes import Parameters
 
 
@@ -262,6 +262,45 @@ class Commander(object):
         pp.execute()
         print "writing data to {} ...".format(outpath)
         pp.write_data(outpath)
+
+    def process(self, args=''):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--output', default='analysis',
+                            help="directory to save the pre-processed data to")
+        parser.add_argument('--single', action='store_true',
+                            help="process single layer only")
+        args = parser.parse_args(args)
+
+        renamer = Renamer()
+        params = Parameters()
+
+        for item in self.items:
+            index = renamer.pattern_match(item).groupdict()['index']
+            run_type = params.determine_run_type(index)
+            if run_type != 'single layer' and args.single:
+                print "{} is not single layer, skipping.".format(item)
+
+            elif not h5py.is_hdf5(item):
+                print "{} is not hdf5!".format(item)
+
+            else:
+                try:
+                    self._process(item, args.output, args.single)
+                    logging.info('Processed {}'.format(item))
+                except Exception:
+                    print("Failed to process {}".format(item))
+                    logging.exception('Could not process {}'.format(item))
+
+    @staticmethod
+    def _process(item, outdir, single=False):
+        fname = os.path.basename(item)
+        outpath = os.path.join(outdir, fname)
+
+        pr = ProcessedRun(cache_path=item)
+        print "Pre-processing {} ...".format(item)
+        pr.execute()
+        print "writing data to {} ...".format(outpath)
+        pr.write_data(outpath)
 
 
 class Renamer(object):

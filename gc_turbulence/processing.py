@@ -258,7 +258,7 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
         right order. Can't write data until this has
         been done.
         """
-        steps = ['extract_waves'
+        steps = ['extract_waves',
                  'subtract_waves',
                  'transform',
                  ]
@@ -339,7 +339,6 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
         t0 = self.t[it0]
 
         # transformed coordinates
-
         # transformed x is actually in units of time
         self.xf = (self.x - self.x[0]) / self.front_speed
         self.dxf = self.dx / self.front_speed
