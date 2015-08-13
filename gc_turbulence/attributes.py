@@ -133,8 +133,8 @@ class AnalysisVectors(object):
                ('V',  np.float32),  # cross stream velocity
                ('W',  np.float32),  # vertical velocity
 
-               ('fx', np.float32),  # front detection in space
-               ('ft', np.float32),  # front detection in time
+               #  ('fx', np.float32),  # front detection in space
+               #  ('ft', np.float32),  # front detection in time
                ('front_speed', np.float32),     # LAB coord front speed
 
                # Waves (LAB coords)
