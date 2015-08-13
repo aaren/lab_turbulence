@@ -158,10 +158,9 @@ class AnalysisVectors(object):
                ('tf',  np.float32),  # time coordinates (single vector)
 
                ('Uf', np.float32),  # front relative streamwise velocity
-               ('Vf', np.float32),  # front relative cross stream velocity
                ('Wf', np.float32),  # front relative vertical velocity
 
-               ('ftf', np.float32),  # front detection in time (scalar)
+               ('t0', np.float32),  # front detection in time (scalar)
                ]
     vectors = np.dtype(vectors)
 

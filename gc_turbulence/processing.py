@@ -5,11 +5,11 @@ import numpy as np
 import h5py
 import scipy.ndimage as ndi
 
+from . import transform
 from .attributes import ProcessorAttributes, ProcessedAttributes
 from .inpainting import Inpainter
 from .filters import butterpass
 from .runbase import H5Cache
-from .transform import front_speed
 from .waves import WaveExtractor
 
 
@@ -133,7 +133,7 @@ class PreProcessor(ProcessorAttributes, H5Cache):
         interpolation.
         """
         if scale == 'auto':
-            scale = front_speed(self)
+            scale = transform.front_speed(self)
 
         inpainter = Inpainter(self, sub_region=sub_region, scale=scale)
         inpainter.paint(processors=12)
@@ -246,18 +246,37 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
 
             self.init_vectors()
 
+        self.has_executed = False
+
     def init_vectors(self):
         self.z = self.Z[:, 0, 0]
         self.x = self.X[0, :, 0]
         self.t = self.T[0, 0, :]
 
+    def execute(self):
+        """Execute the pre-processing steps in the
+        right order. Can't write data until this has
+        been done.
+        """
+        steps = ['extract_waves'
+                 'subtract_waves',
+                 'transform',
+                 ]
+
+        for step in steps:
+            logging.info('starting {}'.format(step))
+            processor = getattr(self, step)
+            processor()
+            logging.info('finished {}'.format(step))
+
+        self.has_executed = True
+
     def critical_frequency(self):
         """Calculate the frequency below which we expect periodic features
         to not be averaged out by mean subtraction.
         """
-        c = self.front_speed.value
-        x = self.X[0, :, 0]
-        fcrit = c / (x.max() - x.min())
+        c = self.front_speed
+        fcrit = c / (self.x.max() - self.x.min())
         return fcrit
 
     def get_waves(self, component='u', tmin=0, tmax=3000, vertical=True):
@@ -284,7 +303,7 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
                                         cutoff=0.45,
                                         bandpass=bandpass)
 
-        prewaveless = prewaveless - self.zxwaves
+        prewaveless = prewaveless - zxwaves
         background = prewaveless[..., :tmax].mean(axis=-1, keepdims=True)
 
         return pre_waves, zxwaves, background
@@ -296,9 +315,57 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
 
     def subtract_waves(self):
         """Subtract the waves from data and overwrite."""
-        self.U = self.U - self.wU - self.wUr - self.Ubg
-        self.W = self.W - self.wW - self.wWr - self.Wbg
+        self.U = self.U - self.wU.sum(axis=-1) - self.wUr - self.Ubg
+        self.W = self.W - self.wW.sum(axis=-1) - self.wWr - self.Wbg
 
-    def execute(self):
-        self.extract_waves()
-        self.subtract_waves()
+    @property
+    def transformer(self):
+        return transform.FrontTransformer(self.front_speed,
+                                          dx=self.dx,
+                                          dt=self.dt)
+
+    @property
+    def front_speed(self):
+        return transform.front_speed(self)
+
+    def transform(self):
+        self.Uf = self.transformer.to_front(self.U) - self.front_speed
+        self.Wf = self.transformer.to_front(self.W)
+
+        # index and time of front onset
+        lower_streamwise = self.Uf[:20].mean(axis=1).mean(axis=0)
+        it0 = np.argmax(lower_streamwise > self.front_speed / 2)
+
+        t0 = self.t[it0]
+
+        # transformed coordinates
+
+        # transformed x is actually in units of time
+        self.xf = (self.x - self.x[0]) / self.front_speed
+        self.dxf = self.dx / self.front_speed
+
+        self.zf = self.z
+        self.tf = self.t - t0
+        self.t0 = t0  # (to replace ftf)
+
+        self.Zf, self.Xf, self.Tf = np.meshgrid(self.zf, self.xf, self.tf,
+                                                indexing='ij')
+
+    def write_data(self, path):
+        """Save everything to a new hdf5."""
+        if not self.has_executed:
+            print "Data has not been processed! Not writing."
+            return
+
+        self.hdf5_write_prep(path)
+        h5file = h5py.File(path, 'w')
+
+        for vector in self.save_vectors.names:
+            data = getattr(self, vector)
+            h5file.create_dataset(vector, data.shape, dtype=data.dtype)
+            h5file[vector][...] = data
+
+        for k, v in self.attributes.items():
+            h5file.attrs[k] = v
+
+        h5file.close()
