@@ -7,7 +7,7 @@ import gc_turbulence as g
 
 cp = g.default_cache + 'r13_12_12c.hdf5'
 
-r = g.SingleLayerRun(cache_path=cp)
+r = g.RawRun(cache_path=cp)
 
 pp = g.PreProcessor(r)
 pp.extract_valid_region()

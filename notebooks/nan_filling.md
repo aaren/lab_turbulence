@@ -334,7 +334,7 @@ import gc_turbulence as g
 import scipy.ndimage as ndi
 import scipy.interpolate as interp
 
-run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
+run = g.RawRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
 run.load()
 pp = g.PreProcessor(run)
 pp.extract_valid_region()
@@ -418,7 +418,7 @@ import gc_turbulence as g
 import scipy.ndimage as ndi
 import scipy.interpolate as interp
 
-run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
+run = g.RawRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
 run.load()
 pp = g.PreProcessor(run)
 pp.extract_valid_region()
@@ -486,7 +486,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gc_turbulence as g
 
-run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
+run = g.RawRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
 run.load()
 pp = g.PreProcessor(run)
 pp.extract_valid_region()

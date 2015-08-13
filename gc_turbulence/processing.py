@@ -19,7 +19,7 @@ class PreProcessor(ProcessorAttributes, H5Cache):
 
     Usage:
 
-        r = SingleLayerRun
+        r = RawRun
         pp = PreProcessor(r)
         pp.execute()
         pp.write_data(hdf5_cache_path)

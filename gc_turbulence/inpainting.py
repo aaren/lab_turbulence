@@ -411,7 +411,7 @@ def construct_linear_interpolator((slice, coordinates, values)):
 
 
 def test():
-    run = g.SingleLayerRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
+    run = g.RawRun(cache_path=g.default_cache + 'r13_12_17c.hdf5')
     run.load()
     pp = g.PreProcessor(run)
     pp.extract_valid_region()

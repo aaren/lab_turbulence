@@ -5,8 +5,8 @@ import numpy.testing as npt
 import numpy
 import h5py
 
-from gc_turbulence import SingleLayerFrame
-from gc_turbulence import SingleLayerRun
+from gc_turbulence import RawFrame
+from gc_turbulence import RawRun
 
 
 # delete all cache
@@ -26,19 +26,19 @@ if os.path.exists(cache_test):
 
 run_kwargs = dict(data_dir=data_dir, pattern='3b4olxqo', rex='.000*',
                   stereo=False)
-run = SingleLayerRun(**run_kwargs)
+run = RawRun(**run_kwargs)
 stereo_run_kwargs = dict(data_dir=data_dir, pattern='3eodh6wx', rex='*',
                          stereo=True)
-stereo_run = SingleLayerRun(**stereo_run_kwargs)
+stereo_run = RawRun(**stereo_run_kwargs)
 
-columns_2d = SingleLayerRun.columns_2d
-columns_3d = SingleLayerRun.columns_3d
+columns_2d = RawRun.columns_2d
+columns_3d = RawRun.columns_3d
 
 
 ## All runs need to be imported to hdf5 before they can be accessed
 ## There is a test hdf5 in valid_cache. Let's try loading this.
 def test_load():
-    r = SingleLayerRun(cache_path=valid_cache, stereo=True)
+    r = RawRun(cache_path=valid_cache, stereo=True)
     r.load()
     assert(type(r.u) is h5py._hl.dataset.Dataset)
     assert_equal(r.u.shape, (68, 86, 10))
@@ -53,7 +53,7 @@ def test_import_run():
     print stereo_run.valid_cache_exists
     print stereo_run.cache_path
     stereo_run.load()
-    valid_run = SingleLayerRun(cache_path=valid_cache)
+    valid_run = RawRun(cache_path=valid_cache)
 
     npt.assert_array_equal(stereo_run.u[...], valid_run.u[...])
 
@@ -62,7 +62,7 @@ def test_import_run():
     # """Generates an array of horizontal velocities from the test data."""
     # U = run.u
     # assert_equal(U.shape[-1], run.nfiles)
-    # frame = SingleLayerFrame(fname=run.files[0], columns=columns_2d)
+    # frame = RawFrame(fname=run.files[0], columns=columns_2d)
     # npt.assert_array_equal(U[:, :, 0], frame.u)
 
 
@@ -71,7 +71,7 @@ def test_import_run():
     # for vel in ('u', 'v', 'w'):
         # U = getattr(stereo_run, vel)
         # assert_equal(U.shape[-1], stereo_run.nfiles)
-        # frame = SingleLayerFrame(fname=stereo_run.files[0], columns=columns_3d)
+        # frame = RawFrame(fname=stereo_run.files[0], columns=columns_3d)
         # assert_equal(frame.fname, stereo_run.files[0])
         # u = getattr(frame, vel)
         # npt.assert_array_equal(U[:, :, 0], u)

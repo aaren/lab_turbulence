@@ -8,8 +8,8 @@ import logging
 
 import h5py
 
-from .runbase import SingleLayerFrame
-from .runbase import SingleLayerRun
+from .runbase import RawFrame
+from .runbase import RawRun
 from .processing import PreProcessor
 from .attributes import Parameters
 
@@ -117,7 +117,7 @@ class Commander(object):
 
     @staticmethod
     def assim(item, args, parameters):
-        run = SingleLayerRun(data_dir=item,
+        run = RawRun(data_dir=item,
                              pattern=args.pattern,
                              rex=args.rex)
         run.init_load_frames()
@@ -181,7 +181,7 @@ class Commander(object):
             self.frame_info(item)
 
     def frame_info(self, item):
-        f = SingleLayerFrame(item)
+        f = RawFrame(item)
         for k, v in f.header.items():
             print "{}: {}".format(k, v)
 
@@ -256,7 +256,7 @@ class Commander(object):
         fname = os.path.basename(item)
         outpath = os.path.join(outdir, fname)
 
-        run = SingleLayerRun(cache_path=item)
+        run = RawRun(cache_path=item)
         pp = PreProcessor(run=run)
         print "Pre-processing {} ...".format(item)
         pp.execute()
@@ -297,7 +297,7 @@ class Renamer(object):
     def get_index_from_file(self, filename):
         """Determine the run index from a Dynamic Studio export file."""
         try:
-            f = SingleLayerFrame(filename)
+            f = RawFrame(filename)
         except (IOError, TypeError):
             return None
 

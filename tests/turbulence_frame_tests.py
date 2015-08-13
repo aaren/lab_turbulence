@@ -3,19 +3,19 @@ import numpy.testing as nt
 
 import numpy as np
 
-from gc_turbulence import SingleLayerFrame, SingleLayerRun
+from gc_turbulence import RawFrame, RawRun
 
 
-columns_2d = np.dtype(SingleLayerRun.columns_2d)
-columns_3d = np.dtype(SingleLayerRun.columns_3d)
+columns_2d = np.dtype(RawRun.columns_2d)
+columns_3d = np.dtype(RawRun.columns_3d)
 
 csv_file = 'tests/ex_data/data/img.3b4olxqo.000500.csv'
 txt_file = 'tests/ex_data/data/Export.3atnh4dp.000500.txt'
 stereo_file = 'tests/ex_data/data/stereo_test.3eodh6wx.000011.txt'
 
-csv_frame = SingleLayerFrame(fname=csv_file, columns=columns_2d)
-txt_frame = SingleLayerFrame(fname=txt_file, columns=columns_2d)
-stereo_frame = SingleLayerFrame(fname=stereo_file, columns=columns_3d)
+csv_frame = RawFrame(fname=csv_file, columns=columns_2d)
+txt_frame = RawFrame(fname=txt_file, columns=columns_2d)
+stereo_frame = RawFrame(fname=stereo_file, columns=columns_3d)
 
 
 def test_find_line_csv():

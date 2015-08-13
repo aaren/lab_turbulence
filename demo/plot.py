@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 import wavelets
 
-from gc_turbulence import SingleLayerRun
+from gc_turbulence import RawRun
 from gc_turbulence import util
 
 
@@ -100,7 +100,7 @@ class PlotRun(object):
                           'parallel':  True,
                           'caching':   True,
                           'limits':    run_lims[run]}
-        self.r = SingleLayerRun(**run_kwargs)
+        self.r = RawRun(**run_kwargs)
         # hack, remove the x at the edges
         # TODO: this should be done with masking somewhere # previously
         for d in ('u', 'w', 't'):

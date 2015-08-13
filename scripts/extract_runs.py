@@ -2,7 +2,7 @@ import sys
 import glob
 import os
 
-from gc_turbulence import SingleLayerRun
+from gc_turbulence import RawRun
 
 
 working_dir = '/home/eeaol/lab/data/flume2/main_data'
@@ -11,7 +11,7 @@ cache_dir = '/home/eeaol/lab/data/flume2/main_data/cache'
 
 def extract(run_dir, rex):
     pattern = os.path.basename(run_dir)
-    run = SingleLayerRun(data_dir=run_dir,
+    run = RawRun(data_dir=run_dir,
                          cache_path=cache_dir,
                          pattern=pattern,
                          rex=rex)
