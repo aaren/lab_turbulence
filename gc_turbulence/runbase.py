@@ -234,13 +234,13 @@ class H5Cache(object):
         for v in self.vectors.names:
             setattr(self, v, getattr(self, v)[...])
 
-    def hdf5_write_prep(self, cache_path):
+    def hdf5_write_prep(self, cache_path, overwrite=False):
         """Prepare for writing a new hdf5 to cache_path. Will DESTROY
         an existing HDF5 at that path.
         """
         makedirs_p(os.path.dirname(cache_path))
         # delete if a file exists. h5py sometimes complains otherwise.
-        if hasattr(self, 'h5file'):
+        if hasattr(self, 'h5file') and overwrite:
             self.h5file.close()
         if os.path.exists(cache_path):
             os.remove(cache_path)
