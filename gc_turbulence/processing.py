@@ -269,20 +269,36 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
 
         extractor = WaveExtractor(component=component, z=self.z, x=self.x)
 
-        self.pre_waves = extractor.extract_waves(data=pre_front,
-                                                 nf=4,
-                                                 component=component,
-                                                 length=full_length,
-                                                 vertical=vertical)
+        pre_waves = extractor.extract_waves(data=pre_front,
+                                            nf=4,
+                                            component=component,
+                                            length=full_length,
+                                            vertical=vertical)
 
         prewaveless = velocity[..., tmin:] \
-            - self.pre_waves.sum(axis=-1)[..., :full_length]
+            - pre_waves.sum(axis=-1)[..., :full_length]
 
         bandpass = partial(butterpass, order=6)
-        self.zxwaves = extractor.get_zxwaves(prewaveless,
-                                             component=component,
-                                             cutoff=0.45,
-                                             bandpass=bandpass)
+        zxwaves = extractor.get_zxwaves(prewaveless,
+                                        component=component,
+                                        cutoff=0.45,
+                                        bandpass=bandpass)
 
         prewaveless = prewaveless - self.zxwaves
-        self.background = prewaveless[..., :tmax].mean(axis=-1, keepdims=True)
+        background = prewaveless[..., :tmax].mean(axis=-1, keepdims=True)
+
+        return pre_waves, zxwaves, background
+
+    def extract_waves(self):
+        """Extract the standing waves and set as attributes."""
+        self.wU, self.wUr, self.Ubg = self.get_waves(component='u')
+        self.wW, self.wWr, self.Wbg = self.get_waves(component='w')
+
+    def subtract_waves(self):
+        """Subtract the waves from data and overwrite."""
+        self.U = self.U - self.wU - self.wUr - self.Ubg
+        self.W = self.W - self.wW - self.wWr - self.Wbg
+
+    def execute(self):
+        self.extract_waves()
+        self.subtract_waves()
