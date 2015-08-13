@@ -27,6 +27,52 @@ class ProcessedVectors(object):
     vectors = np.dtype(vectors)
 
 
+class AnalysisVectors(object):
+    vectors = [('X',  np.float32),  # streamwise coordinates
+               ('Z',  np.float32),  # vertical coordinates
+               ('T',  np.float32),  # time coordinates
+
+               ('x',  np.float32),  # streamwise coordinates (single vector)
+               ('z',  np.float32),  # vertical coordinates (single vector)
+               ('t',  np.float32),  # time coordinates (single vector)
+
+               ('U',  np.float32),  # streamwise velocity
+               ('V',  np.float32),  # cross stream velocity
+               ('W',  np.float32),  # vertical velocity
+
+               ('fx', np.float32),  # front detection in space
+               ('ft', np.float32),  # front detection in time
+               ('front_speed', np.float32),     # LAB coord front speed
+
+               # Waves (LAB coords)
+               # (U = U - wU - wUr - Ubg)
+               ('wU',  np.float32),  # streamwise waves (fitted)
+               ('wW',  np.float32),  # vertical waves (fitted)
+
+               ('wUr',  np.float32),  # streamwise waves (remainder)
+               ('wWr',  np.float32),  # vertical waves (remainder)
+
+               ('Ubg',  np.float32),  # background in u
+               ('Wbg',  np.float32),  # background in w
+
+               # __FRONT coords
+               ('Xf', np.float32),  # front relative streamwise coords
+               ('Zf', np.float32),  # front relative vertical coords
+               ('Tf', np.float32),  # front relative time coords
+
+               ('xf',  np.float32),  # streamwise coordinates (single vector)
+               ('zf',  np.float32),  # vertical coordinates (single vector)
+               ('tf',  np.float32),  # time coordinates (single vector)
+
+               ('Uf', np.float32),  # front relative streamwise velocity
+               ('Vf', np.float32),  # front relative cross stream velocity
+               ('Wf', np.float32),  # front relative vertical velocity
+
+               ('ftf', np.float32),  # front detection in time (scalar)
+               ]
+    vectors = np.dtype(vectors)
+
+
 class ProcessorAttributes(BaseAttributes):
     """Class attributes that define vector names / types and
     measurements used in data processing.
@@ -50,11 +96,16 @@ class ProcessorAttributes(BaseAttributes):
     valid_region_xlim = (-0.070, 0.09)
     valid_region_ylim = (-0.094, 0.02)
 
-    vectors = ProcessedVectors.vectors
+    save_vectors = ProcessedVectors.vectors
 
 
 class ProcessedAttributes(BaseAttributes):
     vectors = ProcessedVectors.vectors
+    save_vectors = AnalysisVectors.vectors
+
+
+class AnalysisAttributes(BaseAttributes):
+    vectors = AnalysisVectors.vectors
 
 
 class Parameters(object):

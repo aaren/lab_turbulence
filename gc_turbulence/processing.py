@@ -218,7 +218,7 @@ class PreProcessor(ProcessorAttributes, H5Cache):
         self.hdf5_write_prep(path)
         h5file = h5py.File(path, 'w')
 
-        for vector in self.vectors.names:
+        for vector in self.save_vectors.names:
             data = getattr(self, vector)
             h5file.create_dataset(vector, data.shape, dtype=data.dtype)
             h5file[vector][...] = data
