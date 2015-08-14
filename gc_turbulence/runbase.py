@@ -303,7 +303,7 @@ class RawRun(H5Cache):
                   ]
 
     def __init__(self, data_dir='./', pattern='*', rex=None,
-                 limits=None, stereo=True, cache_path=None):
+                 limits=None, stereo=True, cache_path=None, load=True):
         """Initialise a run.
 
         Inputs: data_dir - directory containing the velocity files
@@ -380,7 +380,7 @@ class RawRun(H5Cache):
         self._init_frames = False
         if cache_path:
             self.init_cache(cache_path)
-        if self.valid_cache_exists:
+        if self.valid_cache_exists and load:
             self.load()
 
     def init_load_frames(self):

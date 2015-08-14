@@ -32,7 +32,7 @@ default_paths = {'cache': default_cache,
                  'processed': default_processed,
                  'analysis': default_analysis}
 
-run_types = {'cache': RawRun,  # TODO: this isn't actually right (PreProcessor)
+run_types = {'cache': RawRun,
              'processed': ProcessedRun,
              'analysis': AnalysisRun}
 
