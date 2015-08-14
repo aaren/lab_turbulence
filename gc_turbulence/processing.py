@@ -258,7 +258,8 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
         right order. Can't write data until this has
         been done.
         """
-        steps = ['extract_waves',
+        steps = ['init_vectors',
+                 'extract_waves',
                  'subtract_waves',
                  'transform',
                  ]
