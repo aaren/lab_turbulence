@@ -304,17 +304,15 @@ class KDE(object):
 
 
 class AnalysisRun(AnalysisAttributes, H5Cache):
-    def __init__(self, cache_path=None, forced_load=False):
+    def __init__(self, cache_path=None, load=True):
         """A run ready for analysis.
 
         cache_path - hdf5 to load from
-        forced_load - load hdf5 even its keys aren't the same as vectors
+        load - whether to load hdf5
         """
-        self.cache_path = cache_path
-        if self.cache_path:
-            self.init_cache(self.cache_path)
-            self.load(force=forced_load)
+        self.init(cache_path=cache_path, load=load)
+        if not self.cache_path:
+            return
 
-            self.index = self.attributes['run_index']
-
+        self.index = self.attributes['run_index']
         self.has_executed = False

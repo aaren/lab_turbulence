@@ -145,10 +145,22 @@ class RawFrame(object):
 
 class H5Cache(object):
     """Base class for loading from a HDF5 cache."""
-    def __init__(self, cache_path=None):
+    def init(self, cache_path=None, load=False):
+        """Initialise a run linked to HDF5 data.
+
+        cache_path - hdf5 to load from
+        load - {False, True, 'force'}, whether to load the data as well
+               and whether to load even if keys aren't the same as given
+               by self.vectors.
+        """
         self.cache_path = cache_path
         if self.cache_path:
             self.init_cache(self.cache_path)
+
+            if load == 'force':
+                self.load(force=True)
+            elif load:
+                self.load(force=False)
 
     @property
     def valid_cache_exists(self):

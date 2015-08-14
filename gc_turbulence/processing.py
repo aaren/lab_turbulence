@@ -231,21 +231,17 @@ class PreProcessor(ProcessorAttributes, H5Cache):
 
 class ProcessedRun(ProcessedAttributes, H5Cache):
     """Wrapper around a run that has had its data quality controlled."""
-    def __init__(self, cache_path=None, forced_load=False):
+    def __init__(self, cache_path=None, load=True):
         """Initialise a processed run.
 
         cache_path - hdf5 to load from
-        forced_load - load hdf5 even its keys aren't the same as vectors
+        load - whether to load hdf5
         """
-        self.cache_path = cache_path
-        if self.cache_path:
-            self.init_cache(self.cache_path)
-            self.load(force=forced_load)
+        self.init(cache_path=cache_path, load=load)
+        if not self.cache_path:
+            return
 
-            self.index = self.attributes['run_index']
-
-            self.init_vectors()
-
+        self.index = self.attributes['run_index']
         self.has_executed = False
 
     def init_vectors(self):
