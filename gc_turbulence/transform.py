@@ -28,7 +28,7 @@ def detect_front(run):
     """
     # TODO: make more general, find the peak instead
     threshold = 0.01  # m / s
-    column_avg = run.W.mean(axis=0)
+    column_avg = run.W[:].mean(axis=0)
     exceed = column_avg > threshold
     # find first occurence of exceeding threshold
     front_it = np.argmax(exceed, axis=1)
