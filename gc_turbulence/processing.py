@@ -342,6 +342,10 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
         self.Wf_ = ndi.zoom(self.Wf[:] / U, **zoom_kwargs)
 
     def write_data(self, path):
+        # TODO: could avoid this by writing to hdf5 as we go along
+        # This would save a lot of memory as well. Would need to
+        # wrap all the save_vectors so that e.g. self.Uf = output
+        # is the same as h5file['Uf'][...] = output
         """Save everything to a new hdf5."""
         if not self.has_executed:
             print "Data has not been processed! Not writing."
