@@ -139,77 +139,6 @@ class PreProcessor(ProcessorAttributes, H5Cache):
         inpainter = Inpainter(self, sub_region=sub_region, scale=scale)
         inpainter.paint(processors=12)
 
-    def non_dimensionalise(self):
-        """Take the original, dimensional run data, divide by length
-        / time scales and resample to get non-dimensionalised data
-        on a regular grid.
-
-        NB. This method is gregarious with the data. It will take
-        all of the run data and non-dim. It will not restrict to a
-        particular regular grid, so you won't be able to stack
-        multiple runs directly if they occupy different volumes in
-        non-dimensional space (which they will if they have
-        different parameters).
-        """
-        # FIXME: work with two layer runs
-        p = self.run.attributes
-
-        # determine the scaling factors
-        L = p['L']  # length
-        H = p['H']  # height
-
-        # acceleration (reduced gravity)
-        g_ = 9.81 * (p['rho_lock'] - p['rho_ambient']) / p['rho_ambient']
-
-        U = (g_ * H) ** .5  # speed
-        T = H / U  # time
-
-        # Sampling intervals in dim space. These shouldn't vary run
-        # to run but they might. Maybe add this as a sanity check
-        # for each run?
-        dz = np.diff(self.Z[:2, 0, 0])[0]
-        dx = np.diff(self.X[0, :2, 0])[0]
-        dt = np.diff(self.T[0, 0, :2])[0]
-
-        # Sampling intervals in non dim space. These are set here to
-        # be constant across all runs. They were roughly determined
-        # by doubling the non-dimensionalised intervals of the
-        # fastest / tallest run (so that we don't try and oversample
-        # anything).
-        # TODO: define this elsewhere (class attribute?)
-        dx_ = 0.01
-        dz_ = 0.012
-        dt_ = 0.015
-
-        # as well as scaling the quantities, we have to scale the
-        # sampling interval. The dimensional non dim interval is
-        # dt_ * T; the dimensional interval is dt.
-        zoom_factor = (dz / (H * dz_),
-                       dx / (L * dx_),
-                       dt / (T * dt_))
-
-        zoom_kwargs = {'zoom':  zoom_factor,
-                       'order': 1,          # spline interpolation.
-                       'mode': 'constant',  # points outside the boundaries
-                       'cval': np.nan,      # are set to np.nan
-                       }
-
-        self.Z_ = ndi.zoom(self.Z[:] / H, **zoom_kwargs)
-        self.X_ = ndi.zoom(self.X[:] / L, **zoom_kwargs)
-        self.T_ = ndi.zoom(self.T[:] / T, **zoom_kwargs)
-
-        self.U_ = ndi.zoom(self.U[:] / U, **zoom_kwargs)
-        self.V_ = ndi.zoom(self.V[:] / U, **zoom_kwargs)
-        self.W_ = ndi.zoom(self.W[:] / U, **zoom_kwargs)
-
-        self.Zf_ = ndi.zoom(self.Zf[:] / H, **zoom_kwargs)
-        self.Xf_ = ndi.zoom(self.Xf[:] / L, **zoom_kwargs)
-        self.Tf_ = ndi.zoom(self.Tf[:] / T, **zoom_kwargs)
-
-        self.Uf_ = ndi.zoom(self.Uf[:] / U, **zoom_kwargs)
-        self.Vf_ = ndi.zoom(self.Vf[:] / U, **zoom_kwargs)
-        self.Wf_ = ndi.zoom(self.Wf[:] / U, **zoom_kwargs)
-
     def write_data(self, path):
         """Save everything to a new hdf5."""
         if not self.has_executed:
@@ -347,6 +276,70 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
 
         self.Zf, self.Xf, self.Tf = np.meshgrid(self.zf, self.xf, self.tf,
                                                 indexing='ij')
+
+    def non_dimensionalise(self):
+        """Take the original, dimensional run data, divide by length
+        / time scales and resample to get non-dimensionalised data
+        on a regular grid.
+
+        NB. This method is gregarious with the data. It will take
+        all of the run data and non-dim. It will not restrict to a
+        particular regular grid, so you won't be able to stack
+        multiple runs directly if they occupy different volumes in
+        non-dimensional space (which they will if they have
+        different parameters).
+        """
+        # FIXME: work with two layer runs
+        p = self.attributes
+
+        # determine the scaling factors
+        L = p['L']  # length
+        H = p['H']  # height
+
+        # acceleration (reduced gravity)
+        g_ = 9.81 * (p['rho_lock'] - p['rho_ambient']) / p['rho_ambient']
+
+        U = (g_ * H) ** .5  # speed
+        T = H / U  # time
+
+        # Sampling intervals in non dim space. These are set here to
+        # be constant across all runs. They were roughly determined
+        # by doubling the non-dimensionalised intervals of the
+        # fastest / tallest run (so that we don't try and oversample
+        # anything).
+        # TODO: define this elsewhere (class attribute?)
+        dx_ = 0.01
+        dz_ = 0.012
+        dt_ = 0.015
+
+        # as well as scaling the quantities, we have to scale the
+        # sampling interval. The dimensional non dim interval is
+        # dt_ * T; the dimensional interval is dt.
+        zoom_factor = (self.dz / (H * dz_),
+                       self.dx / (L * dx_),
+                       self.dt / (T * dt_))
+
+        zoom_kwargs = {'zoom':  zoom_factor,
+                       'order': 1,          # spline interpolation.
+                       'mode': 'constant',  # points outside the boundaries
+                       'cval': np.nan,      # are set to np.nan
+                       }
+
+        self.Z_ = ndi.zoom(self.Z[:] / H, **zoom_kwargs)
+        self.X_ = ndi.zoom(self.X[:] / L, **zoom_kwargs)
+        self.T_ = ndi.zoom(self.T[:] / T, **zoom_kwargs)
+
+        self.U_ = ndi.zoom(self.U[:] / U, **zoom_kwargs)
+        self.V_ = ndi.zoom(self.V[:] / U, **zoom_kwargs)
+        self.W_ = ndi.zoom(self.W[:] / U, **zoom_kwargs)
+
+        self.Zf_ = ndi.zoom(self.Zf[:] / H, **zoom_kwargs)
+        self.Xf_ = ndi.zoom(self.Xf[:] / L, **zoom_kwargs)
+        self.Tf_ = ndi.zoom(self.Tf[:] / T, **zoom_kwargs)
+
+        self.Uf_ = ndi.zoom(self.Uf[:] / U, **zoom_kwargs)
+        self.Vf_ = ndi.zoom(self.Vf[:] / U, **zoom_kwargs)
+        self.Wf_ = ndi.zoom(self.Wf[:] / U, **zoom_kwargs)
 
     def write_data(self, path):
         """Save everything to a new hdf5."""
