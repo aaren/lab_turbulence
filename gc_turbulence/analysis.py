@@ -45,6 +45,9 @@ import scipy.ndimage as ndi
 
 from sklearn.neighbors import KernelDensity
 
+from .attributes import AnalysisAttributes
+from .runbase import H5Cache
+
 
 def subplot(plot_function):
     """Wrapper for functions that plot on a matplotlib axes instance
@@ -298,3 +301,20 @@ class KDE(object):
         kde.fit(data.T)
         log_pdf = kde.score_samples(coords.T)
         return np.exp(log_pdf)
+
+
+class AnalysisRun(AnalysisAttributes, H5Cache):
+    def __init__(self, cache_path=None, forced_load=False):
+        """A run ready for analysis.
+
+        cache_path - hdf5 to load from
+        forced_load - load hdf5 even its keys aren't the same as vectors
+        """
+        self.cache_path = cache_path
+        if self.cache_path:
+            self.init_cache(self.cache_path)
+            self.load(force=forced_load)
+
+            self.index = self.attributes['run_index']
+
+        self.has_executed = False

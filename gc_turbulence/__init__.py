@@ -12,6 +12,8 @@ from runbase import RawFrame, RawRun
 from processing import ProcessedRun
 from processing import PreProcessor
 
+from analysis import AnalysisRun
+
 from attributes import Parameters
 
 from analysis import DMD
