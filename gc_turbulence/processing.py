@@ -13,6 +13,7 @@ from .runbase import H5Cache
 from .waves import WaveExtractor
 
 
+# TODO: should really be called PreProcessedRun. oh well.
 class PreProcessor(ProcessorAttributes, H5Cache):
     """Apply basic pre processing to raw Dynamic Studio output to make
     it usable in analysis.
