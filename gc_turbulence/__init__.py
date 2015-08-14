@@ -20,7 +20,21 @@ from .analysis import DMD
 
 from .commander import cli
 
-from .config import *
+from .config import (default_root,
+                     default_cache,
+                     default_processed,
+                     default_analysis)
+
+from config import single_layer_parameters, two_layer_parameters
+
+
+default_paths = {'cache': default_cache,
+                 'processed': default_processed,
+                 'analysis': default_analysis}
+
+run_types = {'cache': RawRun,  # TODO: this isn't actually right (PreProcessor)
+             'processed': ProcessedRun,
+             'analysis': AnalysisRun}
 
 
 def SingleLayerFrame(*args, **kwargs):
@@ -31,3 +45,13 @@ def SingleLayerFrame(*args, **kwargs):
 def SingleLayerRun(*args, **kwargs):
     warnings.warn('SingleLayerRun is now called RawRun', DeprecationWarning)
     return RawRun(*args, **kwargs)
+
+
+def load(index, kind='analysis', load=True):
+    """Create and return a Run instance for a specific index."""
+    path = default_paths[kind]
+    Run = run_types[kind]
+
+    cache_path = path + index + '.hdf5'
+
+    return Run(cache_path=cache_path, load=load)
