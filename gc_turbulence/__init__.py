@@ -1,26 +1,26 @@
 from exceptions import DeprecationWarning
 import warnings
 
-import attributes
-import runbase
-import processing
-import analysis
-import util
+from . import attributes
+from .import runbase
+from .import processing
+from .import analysis
+from .import util
 
-from runbase import RawFrame, RawRun
+from .runbase import RawFrame, RawRun
 
-from processing import ProcessedRun
-from processing import PreProcessor
+from .processing import ProcessedRun
+from .processing import PreProcessor
 
-from analysis import AnalysisRun
+from .analysis import AnalysisRun
 
-from attributes import Parameters
+from .attributes import Parameters
 
-from analysis import DMD
+from .analysis import DMD
 
-from commander import cli
+from .commander import cli
 
-from config import *
+from .config import *
 
 
 def SingleLayerFrame(*args, **kwargs):
