@@ -92,7 +92,8 @@ class Basic(AnalysisBase):
 
         self.levels_u = 100
         self.levels_u_ = np.linspace(-0.5, 0.5, 100)
-        ## derived properties
+
+        # derived properties
         # absolute velocity
         self.uf_abs = np.hypot(run.Uf, run.Wf)
         self.uf__abs = np.hypot(run.Uf_, run.Wf_)
@@ -261,7 +262,7 @@ class Histograms():
         # hide empty bins
         Hmasked = np.ma.masked_where(H == 0, H)
         xedges, yedges = edges[:2]
-        if not 'levels' in kwargs:
+        if 'levels' not in kwargs:
             kwargs['levels'] = np.linspace(0, 10)
 
         ax.contourf(xedges[1:], yedges[1:], Hmasked.T[where], **kwargs)
@@ -276,6 +277,8 @@ class Histograms():
         Creates a histogram (over time and space) for each vertical
         level and then concatenates these together.
         """
+        iZ = None  # FIXME
+
         q = quantity
         hist_kwargs = {'range': range, 'bins': bins}
         q_bins = np.histogram(q[0], **hist_kwargs)[1]
