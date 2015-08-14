@@ -16,8 +16,6 @@ from .analysis import AnalysisRun
 
 from .attributes import Parameters
 
-from .analysis import DMD
-
 from .commander import cli
 
 from .config import (default_root,
