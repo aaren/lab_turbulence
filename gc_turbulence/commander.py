@@ -266,7 +266,7 @@ class Commander(object):
     def process(self, args=''):
         parser = argparse.ArgumentParser()
         parser.add_argument('--output', default='analysis',
-                            help="directory to save the pre-processed data to")
+                            help="directory to save the processed data to")
         parser.add_argument('--single', action='store_true',
                             help="process single layer only")
         args = parser.parse_args(args)
@@ -297,7 +297,7 @@ class Commander(object):
         outpath = os.path.join(outdir, fname)
 
         pr = ProcessedRun(cache_path=item)
-        print "Pre-processing {} ...".format(item)
+        print "Processing {} ...".format(item)
         pr.execute()
         print "writing data to {} ...".format(outpath)
         pr.write_data(outpath)
