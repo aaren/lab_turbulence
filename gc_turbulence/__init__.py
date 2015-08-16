@@ -26,11 +26,11 @@ from .config import (default_root,
 from config import single_layer_parameters, two_layer_parameters
 
 
-default_paths = {'cache': default_cache,
+default_paths = {'raw': default_cache,
                  'processed': default_processed,
                  'analysis': default_analysis}
 
-run_types = {'cache': RawRun,
+run_types = {'raw': RawRun,
              'processed': ProcessedRun,
              'analysis': AnalysisRun}
 
