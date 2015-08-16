@@ -2,10 +2,14 @@ from exceptions import DeprecationWarning
 import warnings
 
 from . import attributes
-from .import runbase
-from .import processing
-from .import analysis
-from .import util
+from . import runbase
+
+from . import processing
+
+from . import analysis
+from . import plots
+
+from . import util
 
 from .runbase import RawFrame, RawRun
 
