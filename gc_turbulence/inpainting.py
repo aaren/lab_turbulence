@@ -9,6 +9,10 @@ import scipy.interpolate as interp
 import gc_turbulence as g
 
 
+class ProcessOuterError(Exception):
+    pass
+
+
 class Inpainter(object):
     """Fills holes in gridded data (represented by nan) by
     performing linear interpolation using only the set of points
@@ -212,18 +216,18 @@ class Inpainter(object):
                                                                    which=shell)
                 yield (slice, valid_points, valid_values)
 
-    @property
-    def valid_outer_points_generator(self):
+    def valid_outer_points_generator(self, slice_length):
         """Construct valid points in a slice from the volume that
         created the slice.
 
         If the slice is large in extent in the time axis, it is
         burst into smaller slices.
         """
-        burst_slices = [self.burst(slice, maxsize=100)
+        burst_slices = [self.burst(slice, maxsize=slice_length)
                         for slice in self.outer_slices[:-2]]
         burst_slices = np.array(burst_slices).reshape((-1, 3))
         burst_slices = np.vstack((burst_slices, self.outer_slices[-2:]))
+        print burst_slices.shape
 
         for slice in burst_slices:
             slice = list(slice)
@@ -250,7 +254,8 @@ class Inpainter(object):
 
         print "processing outer region..."
         sys.stdout.flush()
-        self.process_outer()
+        self.process_outer(slice_lengths=[100, 200, 500,
+                                          1000, 2000, 4000, 8000])
         print "done"
         sys.stdout.flush()
 
@@ -331,18 +336,31 @@ class Inpainter(object):
         print "nans remaining: ", remaining
         sys.stdout.flush()
 
-    def process_outer(self):
+    def process_outer(self, slice_lengths):
         """Apply nearest neighbour interpolation to the corners of
         the array. You might wonder why we don't just use this
         method with a linear interpolator to do the whole thing: it
         is because we need to serialise for multi processing that we
         end up with a big class.
         """
-        for args in self.valid_outer_points_generator:
-            print "\rInterpolation over {}".format(args[0]),
-            sys.stdout.flush()
-            slice, interpolator = construct_nearest_interpolator(args)
-            self.evaluate_and_write(slice, interpolator)
+        try:
+            length = slice_lengths[0]
+            logging.info('Attempting process_outer with '
+                         'slice_length={}'.format(length))
+            for args in self.valid_outer_points_generator(slice_length=length):
+                print "\rInterpolation over {}".format(args[0]),
+                sys.stdout.flush()
+                slice, interpolator = construct_nearest_interpolator(args)
+                self.evaluate_and_write(slice, interpolator)
+        except ValueError:
+            # no points for the interpolator
+            slice_lengths.pop(0)
+            self.process_outer(slice_lengths)
+        except IndexError:
+            # ran out of slice lengths
+            logging.exception('Could not create valid outer shell. '
+                              'Tried {}'.format(slice_lengths))
+            raise ProcessOuterError
 
     def process_outer_old(self):
         """Apply nearest neighbour interpolation to the corners of
