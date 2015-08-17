@@ -259,25 +259,11 @@ class Inpainter(object):
         print "done"
         sys.stdout.flush()
 
-        def processor(function, inputs, outputs, sentinel='DONE'):
-            """Simple threading processor that reads from the inputs
-            queue and calls function on what it gets. The output
-            from function(input) is written to the outputs queue.
-
-            Stops when it encounters a sentinel on the input queue.
-            """
-            while True:
-                data = inputs.get()
-                if data == sentinel:
-                    break
-                else:
-                    outputs.put(function(data))
-
         # input and output queues
         input_stack = mp.Queue()
         output_stack = mp.Queue()
 
-        pkwargs = {'target': processor,
+        pkwargs = {'target': self.parallel_processor,
                    'args':  (construct_linear_interpolator,
                              input_stack,
                              output_stack)}
@@ -314,11 +300,25 @@ class Inpainter(object):
         print "\nnans remaining: ", self.nan_remaining
         sys.stdout.flush()
 
-        # keep going until no more nans or we reach the recursion
-        # limit
+        # keep going until no more nans or we reach the recursion limit
         if self.nan_remaining != 0 and recursion:
             self.setup()
             self.process_parallel(processors, recursion - 1)
+
+    @staticmethod
+    def parallel_processor(function, inputs, outputs, sentinel='DONE'):
+        """Simple threading processor that reads from the inputs
+        queue and calls function on what it gets. The output
+        from function(input) is written to the outputs queue.
+
+        Stops when it encounters a sentinel on the input queue.
+        """
+        while True:
+            data = inputs.get()
+            if data == sentinel:
+                break
+            else:
+                outputs.put(function(data))
 
     def process_serial(self):
         """Single core interpolation"""
