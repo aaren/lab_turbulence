@@ -227,7 +227,6 @@ class Inpainter(object):
                         for slice in self.outer_slices[:-2]]
         burst_slices = np.array(burst_slices).reshape((-1, 3))
         burst_slices = np.vstack((burst_slices, self.outer_slices[-2:]))
-        print burst_slices.shape
 
         for slice in burst_slices:
             slice = list(slice)
