@@ -343,23 +343,29 @@ class Inpainter(object):
         end up with a big class.
         """
         try:
+            error = False
             length = slice_lengths[0]
             logging.info('Attempting process_outer with '
                          'slice_length={}'.format(length))
             for args in self.valid_outer_points_generator(slice_length=length):
                 print "\rInterpolation over {}".format(args[0]),
                 sys.stdout.flush()
-                slice, interpolator = construct_nearest_interpolator(args)
-                self.evaluate_and_write(slice, interpolator)
-        except ValueError:
-            # no points for the interpolator
-            slice_lengths.pop(0)
-            self.process_outer(slice_lengths)
+                try:
+                    slice, interpolator = construct_nearest_interpolator(args)
+                    self.evaluate_and_write(slice, interpolator)
+                except ValueError:
+                    error = True
+                    continue
         except IndexError:
             # ran out of slice lengths
             logging.exception('Could not create valid outer shell. '
                               'Tried {}'.format(slice_lengths))
             raise ProcessOuterError
+
+        if error is True:
+            # no points for the interpolator somewhere
+            slice_lengths.pop(0)
+            self.process_outer(slice_lengths)
 
     def process_outer_old(self):
         """Apply nearest neighbour interpolation to the corners of
