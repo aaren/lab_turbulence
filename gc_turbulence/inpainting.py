@@ -118,9 +118,9 @@ class Inpainter(object):
         self.outer_slices = [slice(None, None, s - 1)
                              for s in self.invalid.shape]
 
-        self.outer_slices = [np.s_[0, :, 0:8000], np.s_[-1, :, 0:8000],
-                             np.s_[:, 0, 0:8000], np.s_[:, -1, 0:8000],
-                             np.s_[:, :, 0], np.s_[:, :, -1],
+        self.outer_slices = [np.s_[:2, :, 0:8000], np.s_[-2:, :, 0:8000],
+                             np.s_[:, :2, 0:8000], np.s_[:, -2:, 0:8000],
+                             np.s_[:, :, :2], np.s_[:, :, -2:],
                              ]
 
     def construct_points(self, slice, which):
