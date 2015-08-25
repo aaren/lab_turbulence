@@ -360,6 +360,7 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
             print "Data has not been processed! Not writing."
             return
 
+        logging.info('Preparing to write data to {}...'.format(path))
         self.hdf5_write_prep(path)
         h5file = h5py.File(path, 'w')
 
@@ -373,3 +374,4 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
             h5file.attrs[k] = v
 
         h5file.close()
+        logging.info('Wrote data to {}'.format(path))
