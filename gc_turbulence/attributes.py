@@ -227,3 +227,7 @@ class ExperimentAttributes(object):
     @property
     def g_(self):
         return 9.81 * (self.rlock - self.rambient) / self.rambient
+
+    @property
+    def U(self):
+        return (self.g_ * self.H) ** .5
