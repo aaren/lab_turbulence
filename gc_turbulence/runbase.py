@@ -234,6 +234,11 @@ class H5Cache(object):
         for v in vector_names:
             setattr(self, v, self.h5file[v])
 
+        # load scalars to memory
+        for v in vector_names:
+            if self.h5file[v].shape == ():
+                setattr(self, v, getattr(self, v).value)
+
         setattr(self, 'attributes', dict(self.h5file.attrs))
 
     def load_to_memory(self):
