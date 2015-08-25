@@ -234,9 +234,9 @@ class H5Cache(object):
         for v in vector_names:
             setattr(self, v, self.h5file[v])
 
-        # load scalars to memory
+        # load scalars and 1d arrays to memory
         for v in vector_names:
-            if self.h5file[v].shape == ():
+            if len(self.h5file[v].shape) <= 1:
                 setattr(self, v, getattr(self, v).value)
 
         setattr(self, 'attributes', dict(self.h5file.attrs))
