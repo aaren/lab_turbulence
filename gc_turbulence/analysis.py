@@ -45,7 +45,7 @@ import scipy.ndimage as ndi
 
 from sklearn.neighbors import KernelDensity
 
-from .attributes import AnalysisAttributes
+from .attributes import AnalysisAttributes, ExperimentAttributes
 from .runbase import H5Cache
 
 
@@ -245,3 +245,5 @@ class AnalysisRun(AnalysisAttributes, H5Cache):
 
         self.index = self.attributes['run_index']
         self.has_executed = False
+
+        self.attrs = ExperimentAttributes(self.attributes)

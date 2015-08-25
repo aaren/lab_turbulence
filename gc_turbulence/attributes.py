@@ -198,3 +198,32 @@ class ProcessedAttributes(BaseAttributes):
 
 class AnalysisAttributes(BaseAttributes):
     vectors = AnalysisVectors.vectors
+
+
+class ExperimentAttributes(object):
+    def __init__(self, attributes):
+        self.attributes = attributes
+
+    @property
+    def rlock(self):
+        return self.attributes['rho_lock']
+
+    @property
+    def rambient(self):
+        return self.attributes['rho_ambient']
+
+    @property
+    def L(self):
+        return self.attributes['L']
+
+    @property
+    def H(self):
+        return self.attributes['H']
+
+    @property
+    def D(self):
+        return self.attributes['D']
+
+    @property
+    def g_(self):
+        return 9.81 * (self.rlock - self.rambient) / self.rambient
