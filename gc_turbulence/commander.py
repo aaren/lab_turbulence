@@ -245,6 +245,7 @@ class Commander(object):
 
             else:
                 try:
+                    logging.info('Processing {}'.format(item))
                     self._pre_process(item, args.output, args.single)
                     logging.info('Processed {}'.format(item))
                 except Exception:
