@@ -174,17 +174,13 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
         self.index = self.attributes['run_index']
         self.has_executed = False
 
-    def init_vectors(self):
-        self.z = self.Z[:, 0, 0]
-        self.x = self.X[0, :, 0]
-        self.t = self.T[0, 0, :]
-
     def execute(self):
         """Execute the pre-processing steps in the
         right order. Can't write data until this has
         been done.
         """
         steps = ['init_vectors',
+                 'zero_nans',
                  'extract_waves',
                  'subtract_waves',
                  'transform',
@@ -197,6 +193,20 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
             logging.info('finished {}'.format(step))
 
         self.has_executed = True
+
+    def zero_nans(self):
+        nans = np.isnan(self.U)
+        for velocity in ('U', 'V', 'W'):
+            setattr(self, velocity, getattr(self, velocity)[:])
+            getattr(self, velocity)[nans] = 0
+
+        remaining_nans = np.isnan(self.U).sum()
+        assert(remaining_nans == 0)
+
+    def init_vectors(self):
+        self.z = self.Z[:, 0, 0]
+        self.x = self.X[0, :, 0]
+        self.t = self.T[0, 0, :]
 
     def critical_frequency(self):
         """Calculate the frequency below which we expect periodic features
