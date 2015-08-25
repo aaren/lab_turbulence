@@ -271,8 +271,7 @@ class ProcessedRun(ProcessedAttributes, H5Cache):
 
         # index and time of front onset
         lower_streamwise = self.Uf[:20].mean(axis=1).mean(axis=0)
-        it0 = np.argmax(lower_streamwise > self.front_speed / 2)
-
+        it0 = np.argmax(lower_streamwise > 0)
         t0 = self.t[it0]
 
         # transformed coordinates
