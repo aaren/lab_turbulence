@@ -23,7 +23,7 @@ class Inpainter(object):
     # overlap between sub slices when a big slice is chopped up
     slice_overlap = 3
 
-    def __init__(self, run, sub_region=None, scale=1):
+    def __init__(self, data, coords):
         """run has attributes representing coordinates (X, Z, T)
         and data (U, V, W).
 
@@ -35,17 +35,8 @@ class Inpainter(object):
         euclidean space. This should be a characteristic speed of
         the flow (e.g. the front velocity)
         """
-        self.run = run
-        self.sub = sub_region or np.s_[:, :, :]
-
-        # factors to scale the run coordinates by (Z, X, T)
-        self.scales = (('Z', 1),
-                       ('X', 1),
-                       ('T', scale))
-
-        self.data_names = ('U', 'V', 'W')
-
-        # this has to go last
+        self.data = data
+        self.coords = coords
         self.setup()
 
     def setup(self):
@@ -80,11 +71,6 @@ class Inpainter(object):
         To overcome this problem we just re-run the interpolation on
         any remaining nans.
         """
-        pp = self.run
-
-        self.coords = [getattr(pp, c)[self.sub] * s for c, s in self.scales]
-        self.data = [getattr(pp, d)[self.sub] for d in self.data_names]
-
         # TODO: determine invalid from full data
         # I think they are all coincident but we could use OR.
         # or we could check for coincidence and log if not.

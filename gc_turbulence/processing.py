@@ -136,7 +136,19 @@ class PreProcessor(ProcessorAttributes, H5Cache):
         if scale == 'auto':
             scale = transform.front_speed(self)
 
-        inpainter = Inpainter(self, sub_region=sub_region, scale=scale)
+        # factors to scale the run coordinates by (Z, X, T)
+        scales = (('Z', 1),
+                  ('X', 1),
+                  ('T', scale))
+
+        data_names = ('U', 'V', 'W')
+
+        sub_region = sub_region or np.s_[:, :, :]
+
+        coords = [getattr(self, c)[sub_region] * s for c, s in scales]
+        data = [getattr(self, d)[sub_region] for d in data_names]
+
+        inpainter = Inpainter(data=data, coords=coords)
         inpainter.paint(processors=12)
 
     def write_data(self, path):
