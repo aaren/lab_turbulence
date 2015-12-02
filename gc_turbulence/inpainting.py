@@ -23,7 +23,7 @@ class Inpainter(object):
     # overlap between sub slices when a big slice is chopped up
     slice_overlap = 3
 
-    def __init__(self, data, coords):
+    def __init__(self, data, coords, invalid=None):
         """run has attributes representing coordinates (X, Z, T)
         and data (U, V, W).
 
@@ -37,6 +37,12 @@ class Inpainter(object):
         """
         self.data = data
         self.coords = coords
+
+        # TODO: determine invalid from full data
+        # I think they are all coincident but we could use OR.
+        # or we could check for coincidence and log if not.
+        self.invalid = invalid or np.isnan(self.data[0])
+
         self.setup()
 
     def setup(self):
@@ -71,11 +77,6 @@ class Inpainter(object):
         To overcome this problem we just re-run the interpolation on
         any remaining nans.
         """
-        # TODO: determine invalid from full data
-        # I think they are all coincident but we could use OR.
-        # or we could check for coincidence and log if not.
-        self.invalid = np.isnan(self.data[0])
-
         connections = np.ones((3, 3, 3))  # connect diagonals
         self.invalid_with_shell = ndi.binary_dilation(self.invalid,
                                                       structure=connections)
