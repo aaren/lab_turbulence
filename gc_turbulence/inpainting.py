@@ -222,7 +222,7 @@ class Inpainter(object):
                                                                which=~nans)
             yield (slice, valid_points, valid_values)
 
-    def process_parallel(self, processors=20, recursion=0):
+    def process_parallel(self, processors=20, recursion=0, outer=True):
         """Fill in the invalid regions of the data, using parallel
         processing to construct the interpolator for each distinct
         invalid region.
@@ -238,10 +238,11 @@ class Inpainter(object):
         print "inpainting by parallel method..."
         sys.stdout.flush()
 
-        print "processing outer region..."
-        sys.stdout.flush()
-        self.process_outer(slice_lengths=[100, 200, 500,
-                                          1000, 2000, 4000, 8000])
+        if outer:
+            print "processing outer region..."
+            sys.stdout.flush()
+            self.process_outer(slice_lengths=[100, 200, 500,
+                                              1000, 2000, 4000, 8000])
         print "done"
         sys.stdout.flush()
 
@@ -306,10 +307,11 @@ class Inpainter(object):
             else:
                 outputs.put(function(data))
 
-    def process_serial(self):
+    def process_serial(self, outer=True):
         """Single core interpolation"""
         print "\n"
-        self.process_outer()
+        if outer:
+            self.process_outer()
 
         for args in self.valid_points_generator:
             print "\rInterpolation over {}".format(args[0]),
@@ -388,12 +390,14 @@ class Inpainter(object):
                 # see https://stackoverflow.com/questions/7179532
                 d[slice].flat[np.flatnonzero(nans)[good]] = values[good]
 
-    def paint(self, processors=20, recursion=5):
+    def paint(self, processors=20, recursion=5, outer=True):
         """Fill in the invalid (nan) regions of the data. """
         if processors == 1:
-            self.process_serial()
+            self.process_serial(outer=outer)
         else:
-            self.process_parallel(processors=processors, recursion=recursion)
+            self.process_parallel(processors=processors,
+                                  recursion=recursion,
+                                  outer=outer)
 
 
 def construct_nearest_interpolator((slice, coordinates, values)):
